@@ -131,13 +131,15 @@ void retro_reset(void)
 
 #define RGB1555(col) ( (col) << 10 | (col) << 5 | (col) )
 
-static inline draw_point(int x, int y, unsigned char col)
+static inline void draw_point(int x, int y, unsigned char col)
 {
 	int psz = retroctx.point_size;
 	int sy, ey, sx, ex;
 	
-	if (psz == 1)
-		return retroctx.framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
+	if (psz == 1){
+		retroctx.framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
+		return;
+	}
 
 	sy = y - psz > 0        ? y - psz : 0;
 	ey = y + psz<= HEIGHT-1 ? y + psz : HEIGHT - 1;
@@ -151,7 +153,7 @@ static inline draw_point(int x, int y, unsigned char col)
 }
 
 /* plain old bresenham, AA etc. is up to the FE */
-static inline draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
+static inline void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
 {
 	int dx = abs(x1-x0);
 	int dy = abs(y1-y0);

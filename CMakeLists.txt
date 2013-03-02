@@ -21,7 +21,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Libretro")
 			libretro.h
 			
 	)	
-	add_definitions(-DHAVE_LIBRETRO -g )
+	add_definitions(-DHAVE_LIBRETRO )
 	add_library(retro-vecx SHARED ${SOURCES})
 	install(TARGETS retro-vecx DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/libretro)
 
@@ -32,6 +32,7 @@ else (CMAKE_BUILD_TYPE STREQUAL "Libretro")
 	FIND_PACKAGE( SDL_image REQUIRED )
 	LIST (APPEND
 		SOURCES
+			osint.h
 			osint.c
 	)
 	link_libraries( ${SDL} ${SDL_LIBRARY} ${SDLGFX_LIBRARY} ${SDLIMAGE_LIBRARY})
