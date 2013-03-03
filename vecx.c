@@ -1,4 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define Uint8 unsigned char
+
 #include "e6809.h"
 #include "vecx.h"
 #include "osint.h"
@@ -9,11 +14,6 @@
 unsigned char rom[8192];
 unsigned char cart[32768];
 static unsigned char ram[1024];
-
-/* the sound chip registers */
-
-unsigned snd_regs[16];
-static unsigned snd_select;
 
 /* the via 6522 registers */
 
@@ -98,8 +98,151 @@ static long vector_hash[VECTOR_HASH];
 
 static long fcycles;
 
-/* update the snd chips internal registers when via_ora/via_orb changes */
+static unsigned snd_select;
+unsigned snd_regs[16];
 
+int vecx_statesz()
+{
+	return 1025 + (sizeof(unsigned) * 37) + (sizeof(long) * 12) +
+	e6809_statesz() + e8910_statesz();
+}
+
+/* hide all the ugly at the bottom.
+ * usual bit of tedium, should really do htons as well,
+ * along with the usual reinventing of C99 stdint */
+int vecx_serialize ( char* dst, int size )
+{
+	unsigned* statebuf;
+
+	if (size < vecx_statesz())
+		return 0;
+
+	e6809_serialize(dst); dst += e6809_statesz();
+	e8910_serialize(dst); dst += e8910_statesz();
+	
+	memcpy(dst, ram, 1024); dst += 1024;
+
+	memcpy(dst, &snd_select, sizeof(int)); dst += sizeof(int); 
+	memcpy(dst, &via_ora,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_orb,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_ddra,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_ddrb,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t1on,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t1int,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t1c,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t1ll,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t1lh,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t1pb7,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t2on,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t2int,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t2c,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t2ll,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_t2ll,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_sr,     sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_srb,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_src,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_srclk,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_acr,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_pcr,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_ifr,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_ier,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_ca2,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_cb2h,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &via_cb2s,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_rsh,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_rsh,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_xsh,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_ysh,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_zsh,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_jch0,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_jch1,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_jch2,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_jch3,   sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_jsh,    sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_compare, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_vectoring, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &alg_curr_x,    sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &alg_curr_y,    sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &alg_vector_x0, sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &alg_vector_y0, sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &alg_vector_x1, sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &alg_vector_y1, sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &alg_vector_dx, sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &alg_vector_dy, sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &vector_draw_cnt, sizeof(long)); dst += sizeof(long);
+	memcpy(dst, &vector_erse_cnt, sizeof(long)); dst += sizeof(long);
+	*dst = alg_vector_color;
+	
+	return 1;
+}
+
+int vecx_deserialize( char* dst, int size )
+{
+	unsigned* statebuf;
+
+	if (size < vecx_statesz())
+		return 0;
+
+	e6809_deserialize(dst); dst += e6809_statesz();
+	e8910_deserialize(dst); dst += e8910_statesz();
+
+	memcpy(ram, dst, 1024); dst += 1024;
+
+	memcpy(&snd_select,dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_ora,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_orb,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_ddra,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_ddrb,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t1on,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t1int, dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t1c,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t1ll,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t1lh,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t1pb7, dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t2on,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t2int, dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t2c,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t2ll,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_t2ll,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_sr,    dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_srb,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_src,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_srclk, dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_acr,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_pcr,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_ifr,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_ier,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_ca2,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_cb2h,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&via_cb2s,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_rsh,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_rsh,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_xsh,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_ysh,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_zsh,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_jch0,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_jch1,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_jch2,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_jch3,  dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_jsh,   dst,  sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_compare, dst,sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_vectoring, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&alg_curr_x, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&alg_curr_y, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&alg_vector_x0, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&alg_vector_y0, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&alg_vector_x1, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&alg_vector_y1, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&alg_vector_dx, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&alg_vector_dy, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&vector_draw_cnt, dst, sizeof(long)); dst += sizeof(long);
+	memcpy(&vector_erse_cnt, dst, sizeof(long)); dst += sizeof(long);
+	alg_vector_color = *dst;
+	
+	return 1;
+}
+
+/* update the snd chips internal registers when via_ora/via_orb changes */
 static einline void snd_update (void)
 {
 	switch (via_orb & 0x18) {

@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "e6809.h"
 
 /* code assumptions:
@@ -66,6 +68,39 @@ static unsigned *rptr_xyus[4] = {
 	&reg_u,
 	&reg_s
 };
+
+int e6809_statesz()
+{
+	return 10 * sizeof(unsigned);
+}
+
+void e6809_serialize ( char* dst)
+{
+	memcpy(dst, &reg_x,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_y,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_u,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_s,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_pc, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_a,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_b,  sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_dp, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &reg_cc, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &irq_status, sizeof(int)); dst += sizeof(int);
+}
+
+void e6809_deserialize ( char* dst)
+{
+	memcpy(&reg_x,  dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_y,  dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_u,  dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_s,  dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_pc, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_a,  dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_b,  dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_dp, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&reg_cc, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&irq_status, dst, sizeof(int)); dst += sizeof(int);
+}
 
 /* user defined read and write functions */
 

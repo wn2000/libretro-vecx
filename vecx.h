@@ -33,6 +33,10 @@ extern long vector_erse_cnt;
 extern vector_t *vectors_draw;
 extern vector_t *vectors_erse;
 
+int vecx_statesz();
+int vecx_serialize(char* dst, int size);
+int vecx_deserialize(char* dst, int size);
+
 void vecx_reset (void);
 void vecx_emu (long cycles);
 

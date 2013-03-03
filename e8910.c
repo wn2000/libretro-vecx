@@ -1,7 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifndef HAVE_LIBRETRO
 #include "SDL.h"
+#else
+#define Uint8 unsigned char
+#endif
+#include "e8910.h"
 
 #define SOUND_FREQ   22050
 #define SOUND_SAMPLE  1024
@@ -25,28 +31,101 @@
 #define STEP2 length
 #define STEP  2
 
-
-typedef int           INT32;
-typedef unsigned int  UINT32;
-typedef char          INT8;
-typedef unsigned char UINT8;
+extern unsigned snd_regs[16];
 
 struct AY8910 {
 	int index;
 	int ready;
-	unsigned *Regs;
-	INT32 lastEnable;
-	INT32 PeriodA,PeriodB,PeriodC,PeriodN,PeriodE;
-	INT32 CountA,CountB,CountC,CountN,CountE;
-	UINT32 VolA,VolB,VolC,VolE;
-	UINT8 EnvelopeA,EnvelopeB,EnvelopeC;
-	UINT8 OutputA,OutputB,OutputC,OutputN;
-	INT8 CountEnv;
-	UINT8 Hold,Alternate,Attack,Holding;
-	INT32 RNG;
-	unsigned int VolTable[32];
-
+	int lastEnable;
+	int PeriodA,PeriodB,PeriodC,PeriodN,PeriodE;
+	int CountA,CountB,CountC,CountN,CountE;
+	int RNG;
+	unsigned VolA,VolB,VolC,VolE;
+	char CountEnv;
+	unsigned char EnvelopeA,EnvelopeB,EnvelopeC;
+	unsigned char OutputA,OutputB,OutputC,OutputN;
+	unsigned char Hold,Alternate,Attack,Holding;
+	unsigned VolTable[32];
 } PSG;
+
+int e8910_statesz()
+{
+	return sizeof(unsigned) * (16 + 32 + 4) + sizeof(int) * 14 + 12;
+}
+
+void e8910_serialize ( char* dst )
+{
+	memcpy(dst, &PSG.VolTable, sizeof(PSG.VolTable)); dst += sizeof(PSG.VolTable);
+	memcpy(dst, snd_regs, sizeof(snd_regs)); dst += sizeof(snd_regs);
+	memcpy(dst, &PSG.index, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.ready, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.PeriodA, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.PeriodB, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.PeriodC, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.PeriodN, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.PeriodE, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.lastEnable, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.CountA, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.CountB, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.CountC, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.CountN, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.CountE, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.RNG, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.VolA, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.VolB, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.VolC, sizeof(int)); dst += sizeof(int);
+	memcpy(dst, &PSG.VolE, sizeof(int)); dst += sizeof(int);
+
+	*dst++ = PSG.CountEnv;
+	*dst++ = PSG.EnvelopeA;
+	*dst++ = PSG.EnvelopeB;
+	*dst++ = PSG.EnvelopeC;
+	*dst++ = PSG.OutputA;
+	*dst++ = PSG.OutputB;
+	*dst++ = PSG.OutputC;
+	*dst++ = PSG.OutputN;
+	*dst++ = PSG.Hold;
+	*dst++ = PSG.Alternate;
+	*dst++ = PSG.Attack;
+	*dst++ = PSG.Holding;
+}
+
+void e8910_deserialize ( char* dst )
+{
+	memcpy(&PSG.VolTable, dst, sizeof(PSG.VolTable)); dst += sizeof(PSG.VolTable);
+	memcpy(snd_regs, dst, sizeof(snd_regs)); dst += sizeof(snd_regs);
+	memcpy(&PSG.index, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.ready, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.PeriodA, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.PeriodB, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.PeriodC, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.PeriodN, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.PeriodE, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.lastEnable, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.CountA, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.CountB, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.CountC, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.CountN, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.CountE, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.RNG, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.VolA, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.VolB, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.VolC, dst, sizeof(int)); dst += sizeof(int);
+	memcpy(&PSG.VolE, dst, sizeof(int)); dst += sizeof(int);
+
+	PSG.CountEnv = *dst++;
+	PSG.EnvelopeA = *dst++;
+	PSG.EnvelopeB = *dst++;
+	PSG.EnvelopeC = *dst++;
+	PSG.OutputA = *dst++;
+	PSG.OutputB = *dst++;
+	PSG.OutputC = *dst++;
+	PSG.OutputN = *dst++;
+	PSG.Hold = *dst++;
+	PSG.Alternate = *dst++;
+	PSG.Attack = *dst++;
+	PSG.Holding = *dst;
+}
 
 /* register id's */
 #define AY_AFINE	(0)
@@ -71,8 +150,8 @@ void e8910_write(int r, int v)
 {
 	int old;
 
-    if (PSG.Regs == NULL) return;
-	PSG.Regs[r] = v;
+    if (snd_regs == NULL) return;
+	snd_regs[r] = v;
 
 	/* A note about the period of tones, noise and envelope: for speed reasons,*/
 	/* we count down from the period to 0, but careful studies of the chip     */
@@ -88,61 +167,61 @@ void e8910_write(int r, int v)
 	{
 	case AY_AFINE:
 	case AY_ACOARSE:
-		PSG.Regs[AY_ACOARSE] &= 0x0f;
+		snd_regs[AY_ACOARSE] &= 0x0f;
 		old = PSG.PeriodA;
-		PSG.PeriodA = (PSG.Regs[AY_AFINE] + 256 * PSG.Regs[AY_ACOARSE]) * STEP3;
+		PSG.PeriodA = (snd_regs[AY_AFINE] + 256 * snd_regs[AY_ACOARSE]) * STEP3;
 		if (PSG.PeriodA == 0) PSG.PeriodA = STEP3;
 		PSG.CountA += PSG.PeriodA - old;
 		if (PSG.CountA <= 0) PSG.CountA = 1;
 		break;
 	case AY_BFINE:
 	case AY_BCOARSE:
-		PSG.Regs[AY_BCOARSE] &= 0x0f;
+		snd_regs[AY_BCOARSE] &= 0x0f;
 		old = PSG.PeriodB;
-		PSG.PeriodB = (PSG.Regs[AY_BFINE] + 256 * PSG.Regs[AY_BCOARSE]) * STEP3;
+		PSG.PeriodB = (snd_regs[AY_BFINE] + 256 * snd_regs[AY_BCOARSE]) * STEP3;
 		if (PSG.PeriodB == 0) PSG.PeriodB = STEP3;
 		PSG.CountB += PSG.PeriodB - old;
 		if (PSG.CountB <= 0) PSG.CountB = 1;
 		break;
 	case AY_CFINE:
 	case AY_CCOARSE:
-		PSG.Regs[AY_CCOARSE] &= 0x0f;
+		snd_regs[AY_CCOARSE] &= 0x0f;
 		old = PSG.PeriodC;
-		PSG.PeriodC = (PSG.Regs[AY_CFINE] + 256 * PSG.Regs[AY_CCOARSE]) * STEP3;
+		PSG.PeriodC = (snd_regs[AY_CFINE] + 256 * snd_regs[AY_CCOARSE]) * STEP3;
 		if (PSG.PeriodC == 0) PSG.PeriodC = STEP3;
 		PSG.CountC += PSG.PeriodC - old;
 		if (PSG.CountC <= 0) PSG.CountC = 1;
 		break;
 	case AY_NOISEPER:
-		PSG.Regs[AY_NOISEPER] &= 0x1f;
+		snd_regs[AY_NOISEPER] &= 0x1f;
 		old = PSG.PeriodN;
-		PSG.PeriodN = PSG.Regs[AY_NOISEPER] * STEP3;
+		PSG.PeriodN = snd_regs[AY_NOISEPER] * STEP3;
 		if (PSG.PeriodN == 0) PSG.PeriodN = STEP3;
 		PSG.CountN += PSG.PeriodN - old;
 		if (PSG.CountN <= 0) PSG.CountN = 1;
 		break;
 	case AY_ENABLE:
-		PSG.lastEnable = PSG.Regs[AY_ENABLE];
+		PSG.lastEnable = snd_regs[AY_ENABLE];
 		break;
 	case AY_AVOL:
-		PSG.Regs[AY_AVOL] &= 0x1f;
-		PSG.EnvelopeA = PSG.Regs[AY_AVOL] & 0x10;
-		PSG.VolA = PSG.EnvelopeA ? PSG.VolE : PSG.VolTable[PSG.Regs[AY_AVOL] ? PSG.Regs[AY_AVOL]*2+1 : 0];
+		snd_regs[AY_AVOL] &= 0x1f;
+		PSG.EnvelopeA = snd_regs[AY_AVOL] & 0x10;
+		PSG.VolA = PSG.EnvelopeA ? PSG.VolE : PSG.VolTable[snd_regs[AY_AVOL] ? snd_regs[AY_AVOL]*2+1 : 0];
 		break;
 	case AY_BVOL:
-		PSG.Regs[AY_BVOL] &= 0x1f;
-		PSG.EnvelopeB = PSG.Regs[AY_BVOL] & 0x10;
-		PSG.VolB = PSG.EnvelopeB ? PSG.VolE : PSG.VolTable[PSG.Regs[AY_BVOL] ? PSG.Regs[AY_BVOL]*2+1 : 0];
+		snd_regs[AY_BVOL] &= 0x1f;
+		PSG.EnvelopeB = snd_regs[AY_BVOL] & 0x10;
+		PSG.VolB = PSG.EnvelopeB ? PSG.VolE : PSG.VolTable[snd_regs[AY_BVOL] ? snd_regs[AY_BVOL]*2+1 : 0];
 		break;
 	case AY_CVOL:
-		PSG.Regs[AY_CVOL] &= 0x1f;
-		PSG.EnvelopeC = PSG.Regs[AY_CVOL] & 0x10;
-		PSG.VolC = PSG.EnvelopeC ? PSG.VolE : PSG.VolTable[PSG.Regs[AY_CVOL] ? PSG.Regs[AY_CVOL]*2+1 : 0];
+		snd_regs[AY_CVOL] &= 0x1f;
+		PSG.EnvelopeC = snd_regs[AY_CVOL] & 0x10;
+		PSG.VolC = PSG.EnvelopeC ? PSG.VolE : PSG.VolTable[snd_regs[AY_CVOL] ? snd_regs[AY_CVOL]*2+1 : 0];
 		break;
 	case AY_EFINE:
 	case AY_ECOARSE:
 		old = PSG.PeriodE;
-		PSG.PeriodE = ((PSG.Regs[AY_EFINE] + 256 * PSG.Regs[AY_ECOARSE])) * STEP3;
+		PSG.PeriodE = ((snd_regs[AY_EFINE] + 256 * snd_regs[AY_ECOARSE])) * STEP3;
 		//if (PSG.PeriodE == 0) PSG.PeriodE = STEP3 / 2;
 		if (PSG.PeriodE == 0) PSG.PeriodE = STEP3;
 		PSG.CountE += PSG.PeriodE - old;
@@ -175,9 +254,9 @@ void e8910_write(int r, int v)
         has twice the steps, happening twice as fast. Since the end result is
         just a smoother curve, we always use the YM2149 behaviour.
         */
-		PSG.Regs[AY_ESHAPE] &= 0x0f;
-		PSG.Attack = (PSG.Regs[AY_ESHAPE] & 0x04) ? 0x1f : 0x00;
-		if ((PSG.Regs[AY_ESHAPE] & 0x08) == 0)
+		snd_regs[AY_ESHAPE] &= 0x0f;
+		PSG.Attack = (snd_regs[AY_ESHAPE] & 0x04) ? 0x1f : 0x00;
+		if ((snd_regs[AY_ESHAPE] & 0x08) == 0)
 		{
 			/* if Continue = 0, map the shape to the equivalent one which has Continue = 1 */
 			PSG.Hold = 1;
@@ -185,8 +264,8 @@ void e8910_write(int r, int v)
 		}
 		else
 		{
-			PSG.Hold = PSG.Regs[AY_ESHAPE] & 0x01;
-			PSG.Alternate = PSG.Regs[AY_ESHAPE] & 0x02;
+			PSG.Hold = snd_regs[AY_ESHAPE] & 0x01;
+			PSG.Alternate = snd_regs[AY_ESHAPE] & 0x02;
 		}
 		PSG.CountE = PSG.PeriodE;
 		PSG.CountEnv = 0x1f;
@@ -203,7 +282,7 @@ void e8910_write(int r, int v)
 	}
 }
 
-static void
+void
 e8910_callback(void *userdata, Uint8 *stream, int length)
 {
 	(void) userdata;
@@ -233,43 +312,43 @@ e8910_callback(void *userdata, Uint8 *stream, int length)
 	/* Setting the output to 1 is necessary because a disabled channel is locked */
 	/* into the ON state (see above); and it has no effect if the volume is 0. */
 	/* If the volume is 0, increase the counter, but don't touch the output. */
-	if (PSG.Regs[AY_ENABLE] & 0x01)
+	if (snd_regs[AY_ENABLE] & 0x01)
 	{
 		if (PSG.CountA <= STEP2) PSG.CountA += STEP2;
 		PSG.OutputA = 1;
 	}
-	else if (PSG.Regs[AY_AVOL] == 0)
+	else if (snd_regs[AY_AVOL] == 0)
 	{
 		/* note that I do count += length, NOT count = length + 1. You might think */
 		/* it's the same since the volume is 0, but doing the latter could cause */
 		/* interferencies when the program is rapidly modulating the volume. */
 		if (PSG.CountA <= STEP2) PSG.CountA += STEP2;
 	}
-	if (PSG.Regs[AY_ENABLE] & 0x02)
+	if (snd_regs[AY_ENABLE] & 0x02)
 	{
 		if (PSG.CountB <= STEP2) PSG.CountB += STEP2;
 		PSG.OutputB = 1;
 	}
-	else if (PSG.Regs[AY_BVOL] == 0)
+	else if (snd_regs[AY_BVOL] == 0)
 	{
 		if (PSG.CountB <= STEP2) PSG.CountB += STEP2;
 	}
-	if (PSG.Regs[AY_ENABLE] & 0x04)
+	if (snd_regs[AY_ENABLE] & 0x04)
 	{
 		if (PSG.CountC <= STEP2) PSG.CountC += STEP2;
 		PSG.OutputC = 1;
 	}
-	else if (PSG.Regs[AY_CVOL] == 0)
+	else if (snd_regs[AY_CVOL] == 0)
 	{
 		if (PSG.CountC <= STEP2) PSG.CountC += STEP2;
 	}
 
 	/* for the noise channel we must not touch OutputN - it's also not necessary */
 	/* since we use outn. */
-	if ((PSG.Regs[AY_ENABLE] & 0x38) == 0x38)	/* all off */
+	if ((snd_regs[AY_ENABLE] & 0x38) == 0x38)	/* all off */
 		if (PSG.CountN <= STEP2) PSG.CountN += STEP2;
 
-	outn = (PSG.OutputN | PSG.Regs[AY_ENABLE]);
+	outn = (PSG.OutputN | snd_regs[AY_ENABLE]);
 
 	/* buffering loop */
 	while (length > 0)
@@ -403,7 +482,7 @@ e8910_callback(void *userdata, Uint8 *stream, int length)
 				if ((PSG.RNG + 1) & 2)	/* (bit0^bit1)? */
 				{
 					PSG.OutputN = ~PSG.OutputN;
-					outn = (PSG.OutputN | PSG.Regs[AY_ENABLE]);
+					outn = (PSG.OutputN | snd_regs[AY_ENABLE]);
 				}
 
 				/* The Random Number Generator of the 8910 is a 17-bit shift */
@@ -489,17 +568,15 @@ e8910_build_mixer_table()
 	PSG.VolTable[0] = 0;
 }
 
-
-extern unsigned snd_regs[16];
-
 void
 e8910_init_sound()
 {
+#ifndef HAVE_LIBRETRO
 	// SDL audio stuff
 	SDL_AudioSpec reqSpec;
 	SDL_AudioSpec givenSpec;
+#endif
 
-	PSG.Regs = snd_regs;
 	PSG.RNG  = 1;
 	PSG.OutputA = 0;
 	PSG.OutputB = 0;
@@ -508,6 +585,7 @@ e8910_init_sound()
 	e8910_build_mixer_table();
 	PSG.ready = 1;
 
+#ifndef HAVE_LIBRETRO
 	// set up audio buffering
 	reqSpec.freq = SOUND_FREQ;            // Audio frequency in samples per second
 	reqSpec.format = AUDIO_U8;          // Audio data format
@@ -515,23 +593,23 @@ e8910_init_sound()
 	reqSpec.samples = SOUND_SAMPLE;            // Audio buffer size in samples
 	reqSpec.callback = e8910_callback;      // Callback function for filling the audio buffer
 	reqSpec.userdata = NULL;
-	/* Open the audio device */
+
+/* Open the audio device */
 	if ( SDL_OpenAudio(&reqSpec, &givenSpec) < 0 ){
 		fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
 		exit(-1);
 	}
-
-# if 0
-	fprintf(stdout, "samples:%d format=%x freq=%d\n", givenSpec.samples, givenSpec.format, givenSpec.freq);
-# endif
-
-	// Start playing audio
+	
+// Start playing audio
 	SDL_PauseAudio(0);
+#endif
 }
 
 void
 e8910_done_sound()
 {
+#ifndef HAVE_LIBRETRO
 	SDL_CloseAudio();
+#endif
 }
 

@@ -6,6 +6,7 @@
 #include "osint.h"
 #include "vecx.h"
 #include "e8910.h"
+#include "e6809.h"
 #include "libretro.h"
 
 #define STANDARD_BIOS
@@ -40,9 +41,6 @@ static struct {
 
 /* Empty stubs */
 void retro_set_controller_port_device(unsigned port, unsigned device){}
-size_t retro_serialize_size(void){ return 0; }
-bool retro_serialize(void *data, size_t size){ return false; }
-bool retro_unserialize(const void *data, size_t size){ return false;}
 void retro_cheat_reset(void){}
 void retro_cheat_set(unsigned index, bool enabled, const char *code){}
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) {}
@@ -96,6 +94,21 @@ void retro_init(void){
 	retroctx.line_size  = 1;
 }
 
+size_t retro_serialize_size(void)
+{
+	return vecx_statesz();
+}
+
+bool retro_serialize(void *data, size_t size)
+{
+	return vecx_serialize((char*)data, size);
+}
+
+bool retro_unserialize(const void *data, size_t size)
+{
+	return vecx_deserialize((char*)data, size);
+}
+
 bool retro_load_game(const struct retro_game_info *info)
 {
 /* start with a fresh BIOS copy */
@@ -131,15 +144,13 @@ void retro_reset(void)
 
 #define RGB1555(col) ( (col) << 10 | (col) << 5 | (col) )
 
-static inline void draw_point(int x, int y, unsigned char col)
+static inline draw_point(int x, int y, unsigned char col)
 {
 	int psz = retroctx.point_size;
 	int sy, ey, sx, ex;
 	
-	if (psz == 1){
-		retroctx.framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
-		return;
-	}
+	if (psz == 1)
+		return retroctx.framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
 
 	sy = y - psz > 0        ? y - psz : 0;
 	ey = y + psz<= HEIGHT-1 ? y + psz : HEIGHT - 1;
@@ -153,7 +164,7 @@ static inline void draw_point(int x, int y, unsigned char col)
 }
 
 /* plain old bresenham, AA etc. is up to the FE */
-static inline void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
+static inline draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
 {
 	int dx = abs(x1-x0);
 	int dy = abs(y1-y0);
