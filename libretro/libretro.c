@@ -69,7 +69,7 @@ void retro_get_system_info(struct retro_system_info *info)
 	info->library_name = "VecX";
 	info->library_version = "1.2";
 	info->need_fullpath = false;
-	info->valid_extensions = "bin|BIN";
+	info->valid_extensions = "bin|vec";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info)

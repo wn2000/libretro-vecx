@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifndef HAVE_LIBRETRO
+#ifndef __LIBRETRO__
 #include "SDL.h"
 #else
 #define Uint8 unsigned char
@@ -571,7 +571,7 @@ e8910_build_mixer_table()
 void
 e8910_init_sound()
 {
-#ifndef HAVE_LIBRETRO
+#ifndef __LIBRETRO__
 	// SDL audio stuff
 	SDL_AudioSpec reqSpec;
 	SDL_AudioSpec givenSpec;
@@ -585,7 +585,7 @@ e8910_init_sound()
 	e8910_build_mixer_table();
 	PSG.ready = 1;
 
-#ifndef HAVE_LIBRETRO
+#ifndef __LIBRETRO__
 	// set up audio buffering
 	reqSpec.freq = SOUND_FREQ;            // Audio frequency in samples per second
 	reqSpec.format = AUDIO_U8;          // Audio data format
@@ -608,7 +608,7 @@ e8910_init_sound()
 void
 e8910_done_sound()
 {
-#ifndef HAVE_LIBRETRO
+#ifndef __LIBRETRO__
 	SDL_CloseAudio();
 #endif
 }
