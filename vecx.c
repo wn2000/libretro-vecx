@@ -114,6 +114,8 @@ int vecx_serialize ( char* dst, int size )
 {
 	unsigned* statebuf;
 
+   (void)statebuf;
+
 	if (size < vecx_statesz())
 		return 0;
 
@@ -179,6 +181,8 @@ int vecx_serialize ( char* dst, int size )
 int vecx_deserialize( char* dst, int size )
 {
 	unsigned* statebuf;
+
+   (void)statebuf;
 
 	if (size < vecx_statesz())
 		return 0;

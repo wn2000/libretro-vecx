@@ -4,8 +4,6 @@
 
 #ifndef __LIBRETRO__
 #include "SDL.h"
-#else
-#define Uint8 unsigned char
 #endif
 #include "e8910.h"
 
@@ -283,12 +281,12 @@ void e8910_write(int r, int v)
 }
 
 void
-e8910_callback(void *userdata, Uint8 *stream, int length)
+e8910_callback(void *userdata, uint8_t *stream, int length)
 {
 	(void) userdata;
 
 	int outn;
-	Uint8* buf1 = stream;
+	uint8_t* buf1 = stream;
 
 	/* hack to prevent us from hanging when starting filtered outputs */
 	if (!PSG.ready)
