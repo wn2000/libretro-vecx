@@ -12,7 +12,7 @@
  *    the lower bits with the unused upper bits all set to zero.
  */
 
-#define einline __inline
+#define einline INLINE
 
 enum {
 	FLAG_E		= 0x80,
@@ -935,7 +935,7 @@ einline void inst_bra16 (unsigned test, unsigned op, unsigned *cycles)
 
 /* instruction: pshs/pshu */
 
-einline void inst_psh (unsigned op, unsigned *sp,
+static einline void inst_psh (unsigned op, unsigned *sp,
 					   unsigned data, unsigned *cycles)
 {
 	if (op & 0x80) {
@@ -982,7 +982,7 @@ einline void inst_psh (unsigned op, unsigned *sp,
 
 /* instruction: puls/pulu */
 
-einline void inst_pul (unsigned op, unsigned *sp, unsigned *osp,
+static einline void inst_pul (unsigned op, unsigned *sp, unsigned *osp,
 					   unsigned *cycles)
 {
 	if (op & 0x01) {
@@ -1112,7 +1112,7 @@ einline void exgtfr_write (unsigned reg, unsigned data)
 
 /* instruction: exg */
 
-einline void inst_exg (void)
+static einline void inst_exg (void)
 {
 	unsigned op, tmp;
 
