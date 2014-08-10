@@ -80,7 +80,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 void retro_init(void)
 {
-   unsigned level = 1; 
+   unsigned level = 5; 
    env_cb(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, &level);
    e8910_init_sound();
    sound_init = true;
