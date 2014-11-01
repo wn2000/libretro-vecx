@@ -1,0 +1,2 @@
+INCFLAGS := -I$(CORE_DIR)
+SOURCES_C  := $(CORE_DIR)/e6809.c $(CORE_DIR)/e8910.c $(LIBRETRO_DIR)/libretro.c $(CORE_DIR)/vecx.c

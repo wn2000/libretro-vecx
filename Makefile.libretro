@@ -165,10 +165,14 @@ else
 CFLAGS += -O3
 endif
 
+CORE_DIR     := .
+LIBRETRO_DIR := ./libretro
 
-OBJECTS    = e6809.o e8910.o libretro/libretro.o vecx.o
+include Makefile.common
 
-INCLUDES   = -I. 
+OBJECTS   := $(SOURCES_C:.c=.o)
+
+INCLUDES   = $(INCFLAGS)
 DEFINES    = -DHAVE_STRINGS_H -DHAVE_STDINT_H -DHAVE_INTTYPES_H -D__LIBRETRO__ -DRIGHTSHIFT_IS_SAR -DINLINE=inline
 
 ifeq ($(platform), sncps3)
@@ -206,6 +210,6 @@ clean-objs:
 	rm -rf $(OBJECTS)
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(TARGET) $(OBJECTS)
 
 .PHONY: clean
