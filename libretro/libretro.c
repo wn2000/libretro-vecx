@@ -27,7 +27,7 @@
 static retro_video_refresh_t video_cb;
 static retro_input_poll_t poll_cb;
 static retro_input_state_t input_state_cb;
-static retro_environment_t env_cb;
+static retro_environment_t environ_cb;
 static retro_audio_sample_t audio_cb;
 
 static unsigned char point_size;
@@ -51,7 +51,7 @@ size_t retro_get_memory_size(unsigned id){ return 0; }
 extern unsigned snd_regs[16];
 
 /* setters */
-void retro_set_environment(retro_environment_t cb) { env_cb = cb; }
+void retro_set_environment(retro_environment_t cb) { environ_cb = cb; }
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb) { audio_cb = cb; }
 void retro_set_input_poll(retro_input_poll_t cb) { poll_cb = cb; }
@@ -81,7 +81,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 void retro_init(void)
 {
    unsigned level = 5; 
-   env_cb(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, &level);
+   environ_cb(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, &level);
    e8910_init_sound();
    sound_init = true;
    memset(framebuffer, 0, sizeof(framebuffer) / sizeof(framebuffer[0]));
@@ -106,6 +106,30 @@ bool retro_unserialize(const void *data, size_t size)
 
 bool retro_load_game(const struct retro_game_info *info)
 {
+   struct retro_input_descriptor desc[] = {
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "Left" },
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "Up" },
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN,  "Down" },
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT, "Right" },
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,     "2" },
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,     "1" },
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,     "3" },
+      { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,     "4" },
+
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "Left" },
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "Up" },
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN,  "Down" },
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT, "Right" },
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B,     "2" },
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,     "1" },
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,     "3" },
+      { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,     "4" },
+
+      { 0 },
+   };
+
+   environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
+
 /* start with a fresh BIOS copy */
 	memcpy(rom, bios_data, bios_data_size);
 
@@ -240,45 +264,77 @@ void retro_run(void)
       analog stick (alg_jch0, alg_jch1, => -1 (0x00) .. 0 (0x80) .. 1 (0xff)) */
 	poll_cb();
 
-	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT )) alg_jch0 = 0x00;
-	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT)) alg_jch0 = 0xff;
-	else alg_jch0 = 0x80;
-	
-	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   )) alg_jch1 = 0xff;
-	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN )) alg_jch1 = 0x00;
-	else alg_jch1 = 0x80;
+   /* Player 1 */
 
-	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT )) alg_jch2 = 0x00;
-	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT)) alg_jch2 = 0xff;
-	else alg_jch2 = 0x80;
+	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
+      alg_jch0 = 0x00;
+	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+      alg_jch0 = 0xff;
+	else
+      alg_jch0 = 0x80;
 	
-	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   )) alg_jch3 = 0xff;
-	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN )) alg_jch3 = 0x00;
-	else alg_jch3 = 0x80;
-	
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A )) snd_regs[14] &= ~1;
-	else snd_regs[14] |= 1;
-	
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B )) snd_regs[14] &= ~2;
-	else snd_regs[14] |= 2;
+	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
+      alg_jch1 = 0xff;
+	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
+      alg_jch1 = 0x00;
+	else
+      alg_jch1 = 0x80;
 
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X )) snd_regs[14] &= ~4;
-	else snd_regs[14] |= 4;
-
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y )) snd_regs[14] &= ~8;
-	else snd_regs[14] |= 8;
-
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A )) snd_regs[14] &= ~16;
-	else snd_regs[14] |= 16;
 	
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B )) snd_regs[14] &= ~32;
-	else snd_regs[14] |= 32;
-
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X )) snd_regs[14] &= ~64;
-	else snd_regs[14] |= 64;
+	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
+      snd_regs[14] &= ~1;
+	else
+      snd_regs[14] |= 1;
 	
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y )) snd_regs[14] &= ~128;
-	else snd_regs[14] |= 128;
+	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
+      snd_regs[14] &= ~2;
+	else
+      snd_regs[14] |= 2;
+
+	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
+      snd_regs[14] &= ~4;
+	else
+      snd_regs[14] |= 4;
+
+	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
+      snd_regs[14] &= ~8;
+	else
+      snd_regs[14] |= 8;
+
+   /* Player 2 */
+	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
+      alg_jch2 = 0x00;
+	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+      alg_jch2 = 0xff;
+	else
+      alg_jch2 = 0x80;
+	
+	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
+      alg_jch3 = 0xff;
+	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
+      alg_jch3 = 0x00;
+	else
+      alg_jch3 = 0x80;
+
+	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
+      snd_regs[14] &= ~16;
+	else
+      snd_regs[14] |= 16;
+	
+	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
+      snd_regs[14] &= ~32;
+	else
+      snd_regs[14] |= 32;
+
+	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
+      snd_regs[14] &= ~64;
+	else
+      snd_regs[14] |= 64;
+	
+	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
+      snd_regs[14] &= ~128;
+	else
+      snd_regs[14] |= 128;
 		
 	vecx_emu(30000); /* 1500000 / 1000 * 20 */
 	
