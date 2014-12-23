@@ -1125,7 +1125,7 @@ static einline void inst_exg (void)
 
 /* instruction: tfr */
 
-einline void inst_tfr (void)
+static void inst_tfr (void)
 {
 	unsigned op;
 
