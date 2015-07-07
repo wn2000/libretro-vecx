@@ -1,3 +1,9 @@
 *.o
 vecx
 tags
+*.bc
+*.js
+*.dylib
+*.dll
+.npmignore
+package.json
