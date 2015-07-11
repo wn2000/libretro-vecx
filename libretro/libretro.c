@@ -106,6 +106,7 @@ bool retro_unserialize(const void *data, size_t size)
 
 bool retro_load_game(const struct retro_game_info *info)
 {
+   size_t cart_sz;
    struct retro_input_descriptor desc[] = {
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "Left" },
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "Up" },
@@ -124,17 +125,15 @@ bool retro_load_game(const struct retro_game_info *info)
       { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A,     "1" },
       { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X,     "3" },
       { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,     "4" },
-
-      { 0 },
    };
 
    environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
 
-/* start with a fresh BIOS copy */
+   /* start with a fresh BIOS copy */
 	memcpy(rom, bios_data, bios_data_size);
 
-/* just memcpy buffer, ROMs are so tiny on Vectrex */
-	size_t cart_sz = sizeof(cart) / sizeof(cart[0]);
+   /* just memcpy buffer, ROMs are so tiny on Vectrex */
+	cart_sz = sizeof(cart) / sizeof(cart[0]);
 
 	if (info->data && info->size > 0 && info->size <= cart_sz)
    {
