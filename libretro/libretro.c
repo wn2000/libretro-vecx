@@ -31,9 +31,7 @@ static retro_environment_t environ_cb;
 static retro_audio_sample_t audio_cb;
 
 static unsigned char point_size;
-static unsigned char line_size;
 static unsigned short framebuffer[BUFSZ];
-static bool sound_init;
 
 /* Empty stubs */
 void retro_set_controller_port_device(unsigned port, unsigned device){}
@@ -83,10 +81,8 @@ void retro_init(void)
    unsigned level = 5; 
    environ_cb(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, &level);
    e8910_init_sound();
-   sound_init = true;
    memset(framebuffer, 0, sizeof(framebuffer) / sizeof(framebuffer[0]));
    point_size = 1;
-   line_size  = 1;
 }
 
 size_t retro_serialize_size(void)
