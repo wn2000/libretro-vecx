@@ -547,13 +547,11 @@ static einline unsigned ea_indexed (unsigned *cycles)
  * essentially (0 - data).
  */
 
-einline unsigned inst_neg (unsigned data)
+static einline unsigned inst_neg (unsigned data)
 {
-	unsigned i0, i1, r;
-
-	i0 = 0;
-	i1 = ~data;
-	r = i0 + i1 + 1;
+	unsigned i0 = 0;
+	unsigned i1 = ~data;
+	unsigned r = i0 + i1 + 1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
 	set_cc (FLAG_N, test_n (r));
@@ -566,11 +564,9 @@ einline unsigned inst_neg (unsigned data)
 
 /* instruction: com */
 
-einline unsigned inst_com (unsigned data)
+static einline unsigned inst_com (unsigned data)
 {
-	unsigned r;
-
-	r = ~data;
+	unsigned r = ~data;
 
 	set_cc (FLAG_N, test_n (r));
 	set_cc (FLAG_Z, test_z8 (r));
@@ -584,11 +580,9 @@ einline unsigned inst_com (unsigned data)
  * cannot be faked as an add or substract.
  */
 
-einline unsigned inst_lsr (unsigned data)
+static einline unsigned inst_lsr (unsigned data)
 {
-	unsigned r;
-
-	r = (data >> 1) & 0x7f;
+	unsigned r = (data >> 1) & 0x7f;
 
 	set_cc (FLAG_N, 0);
 	set_cc (FLAG_Z, test_z8 (r));
@@ -601,12 +595,10 @@ einline unsigned inst_lsr (unsigned data)
  * cannot be faked as an add or substract.
  */
 
-einline unsigned inst_ror (unsigned data)
+static einline unsigned inst_ror (unsigned data)
 {
-	unsigned r, c;
-
-	c = get_cc (FLAG_C);
-	r = ((data >> 1) & 0x7f) | (c << 7);
+	unsigned c = get_cc (FLAG_C);
+	unsigned r = ((data >> 1) & 0x7f) | (c << 7);
 
 	set_cc (FLAG_N, test_n (r));
 	set_cc (FLAG_Z, test_z8 (r));
@@ -619,11 +611,9 @@ einline unsigned inst_ror (unsigned data)
  * cannot be faked as an add or substract.
  */
 
-einline unsigned inst_asr (unsigned data)
+static einline unsigned inst_asr (unsigned data)
 {
-	unsigned r;
-
-	r = ((data >> 1) & 0x7f) | (data & 0x80);
+	unsigned r = ((data >> 1) & 0x7f) | (data & 0x80);
 
 	set_cc (FLAG_N, test_n (r));
 	set_cc (FLAG_Z, test_z8 (r));
@@ -636,13 +626,11 @@ einline unsigned inst_asr (unsigned data)
  * essentially (data + data). simple addition.
  */
 
-einline unsigned inst_asl (unsigned data)
+static einline unsigned inst_asl (unsigned data)
 {
-	unsigned i0, i1, r;
-
-	i0 = data;
-	i1 = data;
-	r = i0 + i1;
+	unsigned i0 = data;
+	unsigned i1 = data;
+	unsigned r = i0 + i1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
 	set_cc (FLAG_N, test_n (r));
@@ -657,14 +645,12 @@ einline unsigned inst_asl (unsigned data)
  * essentially (data + data + carry). addition with carry.
  */
 
-einline unsigned inst_rol (unsigned data)
+static einline unsigned inst_rol (unsigned data)
 {
-	unsigned i0, i1, c, r;
-
-	i0 = data;
-	i1 = data;
-	c = get_cc (FLAG_C);
-	r = i0 + i1 + c;
+	unsigned i0 = data;
+	unsigned i1 = data;
+	unsigned c = get_cc (FLAG_C);
+	unsigned r = i0 + i1 + c;
 
 	set_cc (FLAG_N, test_n (r));
 	set_cc (FLAG_Z, test_z8 (r));
@@ -678,13 +664,11 @@ einline unsigned inst_rol (unsigned data)
  * essentially (data - 1).
  */
 
-einline unsigned inst_dec (unsigned data)
+static einline unsigned inst_dec (unsigned data)
 {
-	unsigned i0, i1, r;
-
-	i0 = data;
-	i1 = 0xff;
-	r = i0 + i1;
+	unsigned i0 = data;
+	unsigned i1 = 0xff;
+	unsigned r = i0 + i1;
 
 	set_cc (FLAG_N, test_n (r));
 	set_cc (FLAG_Z, test_z8 (r));
@@ -697,13 +681,11 @@ einline unsigned inst_dec (unsigned data)
  * essentially (data + 1).
  */
 
-einline unsigned inst_inc (unsigned data)
+static einline unsigned inst_inc (unsigned data)
 {
-	unsigned i0, i1, r;
-
-	i0 = data;
-	i1 = 1;
-	r = i0 + i1;
+	unsigned i0 = data;
+	unsigned i1 = 1;
+	unsigned r = i0 + i1;
 
 	set_cc (FLAG_N, test_n (r));
 	set_cc (FLAG_Z, test_z8 (r));
@@ -714,14 +696,14 @@ einline unsigned inst_inc (unsigned data)
 
 /* instruction: tst */
 
-einline void inst_tst8 (unsigned data)
+static einline void inst_tst8 (unsigned data)
 {
 	set_cc (FLAG_N, test_n (data));
 	set_cc (FLAG_Z, test_z8 (data));
 	set_cc (FLAG_V, 0);
 }
 
-einline void inst_tst16 (unsigned data)
+static einline void inst_tst16 (unsigned data)
 {
 	set_cc (FLAG_N, test_n (data >> 8));
 	set_cc (FLAG_Z, test_z16 (data));
@@ -730,7 +712,7 @@ einline void inst_tst16 (unsigned data)
 
 /* instruction: clr */
 
-einline void inst_clr (void)
+static einline void inst_clr (void)
 {
 	set_cc (FLAG_N, 0);
 	set_cc (FLAG_Z, 1);
@@ -740,13 +722,11 @@ einline void inst_clr (void)
 
 /* instruction: suba/subb */
 
-einline unsigned inst_sub8 (unsigned data0, unsigned data1)
+static einline unsigned inst_sub8 (unsigned data0, unsigned data1)
 {
-	unsigned i0, i1, r;
-
-	i0 = data0;
-	i1 = ~data1;
-	r = i0 + i1 + 1;
+	unsigned i0 = data0;
+	unsigned i1 = ~data1;
+	unsigned r = i0 + i1 + 1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
 	set_cc (FLAG_N, test_n (r));
@@ -761,14 +741,12 @@ einline unsigned inst_sub8 (unsigned data0, unsigned data1)
  * only 8-bit version, 16-bit version not needed.
  */
 
-einline unsigned inst_sbc (unsigned data0, unsigned data1)
+static einline unsigned inst_sbc (unsigned data0, unsigned data1)
 {
-	unsigned i0, i1, c, r;
-
-	i0 = data0;
-	i1 = ~data1;
-	c = 1 - get_cc (FLAG_C);
-	r = i0 + i1 + c;
+	unsigned i0 = data0;
+	unsigned i1 = ~data1;
+	unsigned c = 1 - get_cc (FLAG_C);
+	unsigned r = i0 + i1 + c;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
 	set_cc (FLAG_N, test_n (r));
@@ -783,11 +761,9 @@ einline unsigned inst_sbc (unsigned data0, unsigned data1)
  * only 8-bit version, 16-bit version not needed.
  */
 
-einline unsigned inst_and (unsigned data0, unsigned data1)
+static einline unsigned inst_and (unsigned data0, unsigned data1)
 {
-	unsigned r;
-
-	r = data0 & data1;
+	unsigned r = data0 & data1;
 
 	inst_tst8 (r);
 
@@ -798,11 +774,9 @@ einline unsigned inst_and (unsigned data0, unsigned data1)
  * only 8-bit version, 16-bit version not needed.
  */
 
-einline unsigned inst_eor (unsigned data0, unsigned data1)
+static einline unsigned inst_eor (unsigned data0, unsigned data1)
 {
-	unsigned r;
-
-	r = data0 ^ data1;
+	unsigned r = data0 ^ data1;
 
 	inst_tst8 (r);
 
@@ -813,14 +787,12 @@ einline unsigned inst_eor (unsigned data0, unsigned data1)
  * only 8-bit version, 16-bit version not needed.
  */
 
-einline unsigned inst_adc (unsigned data0, unsigned data1)
+static einline unsigned inst_adc (unsigned data0, unsigned data1)
 {
-	unsigned i0, i1, c, r;
-
-	i0 = data0;
-	i1 = data1;
-	c = get_cc (FLAG_C);
-	r = i0 + i1 + c;
+	unsigned i0 = data0;
+	unsigned i1 = data1;
+	unsigned c = get_cc (FLAG_C);
+	unsigned r = i0 + i1 + c;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
 	set_cc (FLAG_N, test_n (r));
@@ -835,11 +807,9 @@ einline unsigned inst_adc (unsigned data0, unsigned data1)
  * only 8-bit version, 16-bit version not needed.
  */
 
-einline unsigned inst_or (unsigned data0, unsigned data1)
+static einline unsigned inst_or (unsigned data0, unsigned data1)
 {
-	unsigned r;
-
-	r = data0 | data1;
+	unsigned r = data0 | data1;
 
 	inst_tst8 (r);
 
@@ -848,13 +818,11 @@ einline unsigned inst_or (unsigned data0, unsigned data1)
 
 /* instruction: adda/addb */
 
-einline unsigned inst_add8 (unsigned data0, unsigned data1)
+static einline unsigned inst_add8 (unsigned data0, unsigned data1)
 {
-	unsigned i0, i1, r;
-
-	i0 = data0;
-	i1 = data1;
-	r = i0 + i1;
+	unsigned i0 = data0;
+	unsigned i1 = data1;
+	unsigned r = i0 + i1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
 	set_cc (FLAG_N, test_n (r));
@@ -867,13 +835,11 @@ einline unsigned inst_add8 (unsigned data0, unsigned data1)
 
 /* instruction: addd */
 
-einline unsigned inst_add16 (unsigned data0, unsigned data1)
+static einline unsigned inst_add16 (unsigned data0, unsigned data1)
 {
-	unsigned i0, i1, r;
-
-	i0 = data0;
-	i1 = data1;
-	r = i0 + i1;
+	unsigned i0 = data0;
+	unsigned i1 = data1;
+	unsigned r = i0 + i1;
 
 	set_cc (FLAG_N, test_n (r >> 8));
 	set_cc (FLAG_Z, test_z16 (r));
@@ -885,13 +851,11 @@ einline unsigned inst_add16 (unsigned data0, unsigned data1)
 
 /* instruction: subd */
 
-einline unsigned inst_sub16 (unsigned data0, unsigned data1)
+static einline unsigned inst_sub16 (unsigned data0, unsigned data1)
 {
-	unsigned i0, i1, r;
-
-	i0 = data0;
-	i1 = ~data1;
-	r = i0 + i1 + 1;
+	unsigned i0 = data0;
+	unsigned i1 = ~data1;
+	unsigned r = i0 + i1 + 1;
 
 	set_cc (FLAG_N, test_n (r >> 8));
 	set_cc (FLAG_Z, test_z16 (r));
@@ -903,15 +867,13 @@ einline unsigned inst_sub16 (unsigned data0, unsigned data1)
 
 /* instruction: 8-bit offset branch */
 
-einline void inst_bra8 (unsigned test, unsigned op, unsigned *cycles)
+static einline void inst_bra8 (unsigned test, unsigned op, unsigned *cycles)
 {
-	unsigned offset, mask;
-
-	offset = pc_read8 ();
+	unsigned offset = pc_read8 ();
 
 	/* trying to avoid an if statement */
 
-	mask = (test ^ (op & 1)) - 1; /* 0xffff when taken, 0 when not taken */
+	unsigned mask = (test ^ (op & 1)) - 1; /* 0xffff when taken, 0 when not taken */
 	reg_pc += sign_extend (offset) & mask;
 
 	*cycles += 3;
@@ -919,15 +881,13 @@ einline void inst_bra8 (unsigned test, unsigned op, unsigned *cycles)
 
 /* instruction: 16-bit offset branch */
 
-einline void inst_bra16 (unsigned test, unsigned op, unsigned *cycles)
+static einline void inst_bra16 (unsigned test, unsigned op, unsigned *cycles)
 {
-	unsigned offset, mask;
-
-	offset = pc_read16 ();
+	unsigned offset = pc_read16 ();
 
 	/* trying to avoid an if statement */
 
-	mask = (test ^ (op & 1)) - 1; /* 0xffff when taken, 0 when not taken */
+	unsigned mask = (test ^ (op & 1)) - 1; /* 0xffff when taken, 0 when not taken */
 	reg_pc += offset & mask;
 
 	*cycles += 5 - mask;
@@ -1027,87 +987,89 @@ static einline void inst_pul (unsigned op, unsigned *sp, unsigned *osp,
 	}
 }
 
-einline unsigned exgtfr_read (unsigned reg)
+static einline unsigned exgtfr_read (unsigned reg)
 {
-	unsigned data;
+   unsigned data;
 
-	switch (reg) {
-	case 0x0:
-		data = get_reg_d ();
-		break;
-	case 0x1:
-		data = reg_x;
-		break;
-	case 0x2:
-		data = reg_y;
-		break;
-	case 0x3:
-		data = reg_u;
-		break;
-	case 0x4:
-		data = reg_s;
-		break;
-	case 0x5:
-		data = reg_pc;
-		break;
-	case 0x8:
-		data = 0xff00 | reg_a;
-		break;
-	case 0x9:
-		data = 0xff00 | reg_b;
-		break;
-	case 0xa:
-		data = 0xff00 | reg_cc;
-		break;
-	case 0xb:
-		data = 0xff00 | reg_dp;
-		break;
-	default:
-		data = 0xffff;
-		printf ("illegal exgtfr reg %.1x\n", reg);
-		break;
-	}
+   switch (reg)
+   {
+      case 0x0:
+         data = get_reg_d ();
+         break;
+      case 0x1:
+         data = reg_x;
+         break;
+      case 0x2:
+         data = reg_y;
+         break;
+      case 0x3:
+         data = reg_u;
+         break;
+      case 0x4:
+         data = reg_s;
+         break;
+      case 0x5:
+         data = reg_pc;
+         break;
+      case 0x8:
+         data = 0xff00 | reg_a;
+         break;
+      case 0x9:
+         data = 0xff00 | reg_b;
+         break;
+      case 0xa:
+         data = 0xff00 | reg_cc;
+         break;
+      case 0xb:
+         data = 0xff00 | reg_dp;
+         break;
+      default:
+         data = 0xffff;
+         printf ("illegal exgtfr reg %.1x\n", reg);
+         break;
+   }
 
-	return data;
+   return data;
 }
 
-einline void exgtfr_write (unsigned reg, unsigned data)
+static einline void exgtfr_write (unsigned reg, unsigned data)
 {
-	switch (reg) {
-	case 0x0:
-		set_reg_d (data);
-		break;
-	case 0x1:
-		reg_x = data;
-		break;
-	case 0x2:
-		reg_y = data;
-		break;
-	case 0x3:
-		reg_u = data;
-		break;
-	case 0x4:
-		reg_s = data;
-		break;
-	case 0x5:
-		reg_pc = data;
-		break;
-	case 0x8:
-		reg_a = data;
-		break;
-	case 0x9:
-		reg_b = data;
-		break;
-	case 0xa:
-		reg_cc = data;
-		break;
-	case 0xb:
-		reg_dp = data;
-		break;
-	default:
-		printf ("illegal exgtfr reg %.1x\n", reg);
-		break;
-	}
+   switch (reg)
+   {
+      case 0x0:
+         set_reg_d (data);
+         break;
+      case 0x1:
+         reg_x = data;
+         break;
+      case 0x2:
+         reg_y = data;
+         break;
+      case 0x3:
+         reg_u = data;
+         break;
+      case 0x4:
+         reg_s = data;
+         break;
+      case 0x5:
+         reg_pc = data;
+         break;
+      case 0x8:
+         reg_a = data;
+         break;
+      case 0x9:
+         reg_b = data;
+         break;
+      case 0xa:
+         reg_cc = data;
+         break;
+      case 0xb:
+         reg_dp = data;
+         break;
+      default:
+         printf ("illegal exgtfr reg %.1x\n", reg);
+         break;
+   }
 }
 
 /* instruction: exg */
