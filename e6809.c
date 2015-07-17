@@ -150,9 +150,8 @@ static einline unsigned test_n (unsigned r)
 
 static einline unsigned test_z8 (unsigned r)
 {
-	unsigned flag;
+	unsigned flag = ~r;
 
-	flag = ~r;
 	flag = (flag >> 4) & (flag & 0xf);
 	flag = (flag >> 2) & (flag & 0x3);
 	flag = (flag >> 1) & (flag & 0x1);
@@ -164,9 +163,8 @@ static einline unsigned test_z8 (unsigned r)
 
 static einline unsigned test_z16 (unsigned r)
 {
-	unsigned flag;
+	unsigned flag = ~r;
 
-	flag = ~r;
 	flag = (flag >> 8) & (flag & 0xff);
 	flag = (flag >> 4) & (flag & 0xf);
 	flag = (flag >> 2) & (flag & 0x3);
@@ -182,9 +180,8 @@ static einline unsigned test_z16 (unsigned r)
 
 static einline unsigned test_v (unsigned i0, unsigned i1, unsigned r)
 {
-	unsigned flag;
+	unsigned flag  = ~(i0 ^ i1); /* input sign bits are the same */
 
-	flag  = ~(i0 ^ i1); /* input sign bits are the same */
 	flag &=  (i0 ^ r);  /* input sign and output sign not same */
 	flag  = (flag >> 7) & 1;
 
@@ -222,10 +219,8 @@ static einline void write8 (unsigned address, unsigned data)
 
 static einline unsigned read16 (unsigned address)
 {
-	unsigned datahi, datalo;
-
-	datahi = read8 (address);
-	datalo = read8 (address + 1);
+	unsigned datahi = read8 (address);
+	unsigned datalo = read8 (address + 1);
 
 	return (datahi << 8) | datalo;
 }
@@ -244,9 +239,7 @@ static einline void push8 (unsigned *sp, unsigned data)
 
 static einline unsigned pull8 (unsigned *sp)
 {
-	unsigned data;
-
-	data = read8 (*sp);
+	unsigned	data = read8 (*sp);
 	(*sp)++;
 
 	return data;
@@ -260,10 +253,8 @@ static einline void push16 (unsigned *sp, unsigned data)
 
 static einline unsigned pull16 (unsigned *sp)
 {
-	unsigned datahi, datalo;
-
-	datahi = pull8 (sp);
-	datalo = pull8 (sp);
+	unsigned datahi = pull8 (sp);
+	unsigned datalo = pull8 (sp);
 
 	return (datahi << 8) | datalo;
 }
@@ -272,9 +263,7 @@ static einline unsigned pull16 (unsigned *sp)
 
 static einline unsigned pc_read8 (void)
 {
-	unsigned data;
-
-	data = read8 (reg_pc);
+	unsigned data = read8 (reg_pc);
 	reg_pc++;
 
 	return data;
@@ -284,9 +273,7 @@ static einline unsigned pc_read8 (void)
 
 static einline unsigned pc_read16 (void)
 {
-	unsigned data;
-
-	data = read16 (reg_pc);
+	unsigned data = read16 (reg_pc);
 	reg_pc += 2;
 
 	return data;
