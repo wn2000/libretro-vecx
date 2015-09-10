@@ -117,12 +117,21 @@ else ifeq ($(platform), psp1)
 	CFLAGS += -DPSP -G0
 	STATIC_LINKING = 1
 
+# Vita
 else ifeq ($(platform), vita)
 	TARGET := $(TARGET_NAME)_libretro_vita.a
 	CC = arm-vita-eabi-gcc$(EXE_EXT)
 	AR = arm-vita-eabi-ar$(EXE_EXT)
 	CFLAGS += -DVITA
 	STATIC_LINKING = 1
+
+# CTR (3DS)
+else ifeq ($(platform), ctr)
+	TARGET := $(TARGET_NAME)_libretro_ctr.a
+	CC = $(DEVKITARM)/bin/arm-none-eabi-gcc$(EXE_EXT)
+	AR = $(DEVKITARM)/bin/arm-none-eabi-ar$(EXE_EXT)
+   CFLAGS += -D_3DS
+   STATIC_LINKING = 1
 
 else ifeq ($(platform), xenon)
    TARGET := $(TARGET_NAME)_libretro_xenon360.a
