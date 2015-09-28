@@ -348,7 +348,7 @@ static einline void int_update (void)
 
 unsigned char read8 (unsigned address)
 {
-	unsigned char data;
+	unsigned char data = 0;
 
 	if ((address & 0xe000) == 0xe000) {
 		/* rom */
