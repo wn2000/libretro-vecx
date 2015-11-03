@@ -34,7 +34,7 @@ else ifneq ($(findstring MINGW,$(shell uname -a)),)
 endif
 
 TARGET_NAME := vecx
-LIBM := -lm
+LIBM := 
 
 ifeq ($(ARCHFLAGS),)
 ifeq ($(archs),ppc)
