@@ -100,6 +100,9 @@ bool retro_unserialize(const void *data, size_t size)
 	return vecx_deserialize((char*)data, size);
 }
 
+unsigned b;
+unsigned char cart[65536];
+
 bool retro_load_game(const struct retro_game_info *info)
 {
    size_t cart_sz;
@@ -135,6 +138,10 @@ bool retro_load_game(const struct retro_game_info *info)
    {
       memset(cart, 0, cart_sz);
       memcpy(cart, info->data, info->size);
+      for(b = 0; b < sizeof(cart); b++)
+      {
+	   set_cart(b, cart[b]);
+      }
 
       vecx_reset();
       e8910_init_sound();
@@ -148,6 +155,10 @@ bool retro_load_game(const struct retro_game_info *info)
 void retro_unload_game(void)
 {
 	memset(cart, 0, sizeof(cart) / sizeof(cart[0]));
+	for(b = 0; b < sizeof(cart); b++)
+	{
+	   set_cart(b, 0);
+	}
 	vecx_reset();
 }
 

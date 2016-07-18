@@ -12,8 +12,23 @@
 #define einline __inline
 
 unsigned char rom[8192];
-unsigned char cart[32768];
+unsigned char cart[65536];
 static unsigned char ram[1024];
+
+unsigned newbankswitchOffset = 0;
+unsigned bankswitchOffset = 0;
+unsigned char get_cart(unsigned pos) { return cart[(pos+bankswitchOffset)%65536]; }
+void set_cart(unsigned pos, unsigned char data){ cart[(pos)%65536] = data; }
+
+#define BS_0 0
+#define BS_1 1
+#define BS_2 2
+#define BS_3 3
+#define BS_4 4
+#define BS_5 5
+
+unsigned bankswitchstate = BS_0;
+
 
 /* the via 6522 registers */
 
@@ -484,7 +499,7 @@ unsigned char read8 (unsigned address)
 	} else if (address < 0x8000) {
 		/* cartridge */
 
-		data = cart[address];
+		data = get_cart(address);
 	} else {
 		data = 0xff;
 	}
@@ -506,6 +521,12 @@ void write8 (unsigned address, unsigned char data)
 		if (address & 0x1000) {
 			switch (address & 0xf) {
 			case 0x0:
+				if(bankswitchstate == BS_2)
+				{
+					if (data == 1) bankswitchstate = BS_3; else bankswitchstate = BS_0;
+				} else {
+					bankswitchstate = BS_0;
+				}
 				via_orb = data;
 
 				snd_update ();
@@ -523,6 +544,13 @@ void write8 (unsigned address, unsigned char data)
 				break;
 			case 0x1:
 				/* register 1 also performs handshakes if necessary */
+
+				if(bankswitchstate == BS_3)
+				{
+					if (data == 0) bankswitchstate = BS_4; else bankswitchstate = BS_0;
+				} else {
+					 bankswitchstate = BS_0;
+				}
 
 				if ((via_pcr & 0x0e) == 0x08) {
 					/* if ca2 is in pulse mode or handshake mode, then it
@@ -550,13 +578,21 @@ void write8 (unsigned address, unsigned char data)
 				break;
 			case 0x2:
 				via_ddrb = data;
+				bankswitchstate = BS_1;
+				if(data & 0x40) newbankswitchOffset = 0; else newbankswitchOffset = 32768;
 				break;
 			case 0x3:
 				via_ddra = data;
+				if(bankswitchstate == BS_1) bankswitchstate = BS_2; else bankswitchstate = BS_0;
 				break;
 			case 0x4:
 				/* T1 low order counter */
 
+				if(bankswitchstate == BS_5)
+				{
+					bankswitchOffset = newbankswitchOffset;
+					bankswitchstate = BS_0;
+				}
 				via_t1ll = data;
 
 				break;
@@ -612,6 +648,12 @@ void write8 (unsigned address, unsigned char data)
 				break;
 			case 0xb:
 				via_acr = data;
+				if(bankswitchstate == BS_4)
+				{
+					if (data == 0x98) bankswitchstate = BS_5; else bankswitchstate = BS_0;
+				} else {
+					bankswitchstate = BS_0;
+				}
 				break;
 			case 0xc:
 				via_pcr = data;

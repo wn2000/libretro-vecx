@@ -41,6 +41,10 @@ void osint_render(void){
 static char *romfilename = "rom.dat";
 static char *cartfilename = NULL;
 
+
+unsigned b;
+unsigned char cart[65536];
+
 static void init(){
 	FILE *f;
 	if(!(f = fopen(romfilename, "rb"))){
@@ -62,6 +66,10 @@ static void init(){
 		}
 		fread(cart, 1, sizeof (cart), f);
 		fclose(f);
+	}
+
+	for(b = 0; b<sizeof(cart); b++) {
+		set_cart(b, cart[b]);
 	}
 }
 
