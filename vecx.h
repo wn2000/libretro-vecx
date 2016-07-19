@@ -20,7 +20,8 @@ typedef struct vector_type {
 } vector_t;
 
 extern unsigned char rom[8192];
-extern unsigned char cart[32768];
+extern unsigned char get_cart(unsigned pos);
+extern void set_cart(unsigned pos, unsigned char data);
 
 extern unsigned snd_regs[16];
 extern unsigned alg_jch0;
