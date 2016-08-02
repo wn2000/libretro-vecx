@@ -17,8 +17,16 @@ static unsigned char ram[1024];
 
 unsigned newbankswitchOffset = 0;
 unsigned bankswitchOffset = 0;
+char big = 0;
 unsigned char get_cart(unsigned pos) { return cart[(pos+bankswitchOffset)%65536]; }
-void set_cart(unsigned pos, unsigned char data){ cart[(pos)%65536] = data; }
+void set_cart(unsigned pos, unsigned char data) {
+	
+	if(pos == 32768 && data != 0) // 64k carts should have data at this offset
+	{
+		big = 1;
+	} 
+	cart[(pos)%65536] = data; 
+}
 
 #define BS_0 0
 #define BS_1 1
@@ -579,7 +587,7 @@ void write8 (unsigned address, unsigned char data)
 			case 0x2:
 				via_ddrb = data;
 				bankswitchstate = BS_1;
-				if(data & 0x40) newbankswitchOffset = 0; else newbankswitchOffset = 32768;
+				if(!big || (data & 0x40)) newbankswitchOffset = 0; else newbankswitchOffset = 32768;
 				break;
 			case 0x3:
 				via_ddra = data;
