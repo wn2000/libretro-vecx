@@ -222,7 +222,6 @@ endif
 LDFLAGS += $(LIBM)
 
 CORE_DIR     := .
-LIBRETRO_DIR := ./libretro
 
 include Makefile.common
 
