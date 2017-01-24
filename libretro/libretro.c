@@ -41,7 +41,11 @@ void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) {}
 unsigned retro_get_region(void){ return RETRO_REGION_PAL; }
 unsigned retro_api_version(void){ return RETRO_API_VERSION; }
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info){ return false; }
-void retro_deinit(void){}
+
+void retro_deinit(void)
+{
+}
+
 void *retro_get_memory_data(unsigned id){ return NULL; }
 size_t retro_get_memory_size(unsigned id){ return 0; }
 
@@ -83,9 +87,6 @@ void retro_init(void)
 {
    unsigned level = 5; 
    environ_cb(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, &level);
-   e8910_init_sound();
-   memset(framebuffer, 0, sizeof(framebuffer) / sizeof(framebuffer[0]));
-   point_size = 1;
 }
 
 size_t retro_serialize_size(void)
@@ -129,7 +130,14 @@ bool retro_load_game(const struct retro_game_info *info)
       { 1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y,     "4" },
    };
 
+   if (!info)
+      return false;
+
    environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
+
+   e8910_init_sound();
+   memset(framebuffer, 0, sizeof(framebuffer) / sizeof(framebuffer[0]));
+   point_size = 1;
 
    /* start with a fresh BIOS copy */
 	memcpy(rom, bios_data, bios_data_size);
@@ -159,9 +167,7 @@ void retro_unload_game(void)
 {
 	memset(cart, 0, sizeof(cart) / sizeof(cart[0]));
 	for(b = 0; b < sizeof(cart); b++)
-	{
 	   set_cart(b, 0);
-	}
 	vecx_reset();
 }
 
