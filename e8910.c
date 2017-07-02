@@ -283,10 +283,10 @@ void e8910_write(int r, int v)
 void
 e8910_callback(void *userdata, uint8_t *stream, int length)
 {
-	(void) userdata;
-
 	int outn;
 	uint8_t* buf1 = stream;
+
+	(void) userdata;
 
 	/* hack to prevent us from hanging when starting filtered outputs */
 	if (!PSG.ready)

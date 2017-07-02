@@ -267,7 +267,7 @@ endif
 ifeq ($(DEBUG), 1)
 CFLAGS += -O0 -g
 else
-CFLAGS += -O3
+CFLAGS += -O2 -DNDEBUG
 endif
 
 LDFLAGS += $(LIBM)
@@ -295,7 +295,7 @@ WARNINGS_DEFINES = -Wall -W -Wno-unused-parameter -Wno-sign-compare -Wno-uniniti
 CODE_DEFINES = -fomit-frame-pointer
 endif
 
-COMMON_DEFINES += $(CODE_DEFINES) $(WARNINGS_DEFINES) -DNDEBUG=1 $(fpic)
+COMMON_DEFINES += $(CODE_DEFINES) $(WARNINGS_DEFINES) $(fpic)
 
 CFLAGS     += $(DEFINES) $(COMMON_DEFINES)
 

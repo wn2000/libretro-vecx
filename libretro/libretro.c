@@ -179,26 +179,26 @@ void retro_reset(void)
 
 #define RGB1555(col) ( (col) << 10 | (col) << 5 | (col) )
 
-static inline void draw_point(int x, int y, unsigned char col)
+static INLINE void draw_point(int x, int y, unsigned char col)
 {
-	int psz = point_size;
-	int sy, ey, sx, ex;
-	
-	if (psz == 1)
+   int psz = point_size;
+   int sy, ey, sx, ex;
+
+   if (psz == 1)
    {
-		framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
+      framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
       return;
    }
 
-	sy = y - psz > 0        ? y - psz : 0;
-	ey = y + psz<= HEIGHT-1 ? y + psz : HEIGHT - 1;
-	sx = x - psz > 0        ? x - psz : 0;
-	ex = x + psz<= WIDTH -1 ? x + psz : WIDTH  - 1;
-	
-	for (y = sy; y <= ey; y++)
-		for (x = sx; x <= ex; x++)
-			if ( (x-sx) * (x-sx) + (y - sy) * (y - sy) <= psz * psz)
-				framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
+   sy = y - psz > 0        ? y - psz : 0;
+   ey = y + psz<= HEIGHT-1 ? y + psz : HEIGHT - 1;
+   sx = x - psz > 0        ? x - psz : 0;
+   ex = x + psz<= WIDTH -1 ? x + psz : WIDTH  - 1;
+
+   for (y = sy; y <= ey; y++)
+      for (x = sx; x <= ex; x++)
+         if ( (x-sx) * (x-sx) + (y - sy) * (y - sy) <= psz * psz)
+            framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
 }
 
 /* plain old bresenham, AA etc. is up to the FE */
