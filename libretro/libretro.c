@@ -202,7 +202,7 @@ static INLINE void draw_point(int x, int y, unsigned char col)
 }
 
 /* plain old bresenham, AA etc. is up to the FE */
-static inline void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
+static INLINE void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
 {
 	int dx = abs(x1-x0);
 	int dy = abs(y1-y0);
