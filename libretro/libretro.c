@@ -20,9 +20,9 @@
 #endif
 #endif
 
-#define WIDTH 330
-#define HEIGHT 410
-#define BUFSZ 135300
+static int WIDTH = 330;
+static int HEIGHT = 410;
+#define BUFSZ 2164800
 
 static retro_video_refresh_t video_cb;
 static retro_input_poll_t poll_cb;
@@ -53,7 +53,14 @@ size_t retro_get_memory_size(unsigned id){ return 0; }
 extern unsigned snd_regs[16];
 
 /* setters */
-void retro_set_environment(retro_environment_t cb) { environ_cb = cb; }
+void retro_set_environment(retro_environment_t cb) {
+   static const struct retro_variable vars[] = {
+      { "vecx_res_multi", "Res Multiplier; 1|2|3|4" },
+      { NULL, NULL },
+   };
+   environ_cb = cb;
+   cb(RETRO_ENVIRONMENT_SET_VARIABLES, (void*)vars);
+}
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb) { audio_cb = cb; }
 void retro_set_input_poll(retro_input_poll_t cb) { poll_cb = cb; }
@@ -78,9 +85,9 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 	info->timing.sample_rate    = 44100;
 	info->geometry.base_width   = WIDTH;
 	info->geometry.base_height  = HEIGHT;
-	info->geometry.max_width    = WIDTH;
-	info->geometry.max_height   = HEIGHT;
-	info->geometry.aspect_ratio = WIDTH / HEIGHT;
+	info->geometry.max_width    = 1320;
+	info->geometry.max_height   = 1640;
+	info->geometry.aspect_ratio = 3.0 / 4.0;
 }
 
 void retro_init(void)
@@ -161,6 +168,44 @@ bool retro_load_game(const struct retro_game_info *info)
    }
 
 	return false;
+}
+
+static void check_variables(void)
+{
+   struct retro_variable var = {0};
+   struct retro_system_av_info av_info;
+
+   var.key = "vecx_res_multi";
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "1"))
+         {
+            WIDTH = 330;
+            HEIGHT = 410;
+            point_size = 1;
+         }
+      else if (!strcmp(var.value, "2"))
+         {
+            WIDTH = 660;
+            HEIGHT = 820;
+            point_size = 2;
+         }
+      else if (!strcmp(var.value, "3"))
+         {
+            WIDTH = 990;
+            HEIGHT = 1230;
+            point_size = 2;
+         }
+      else if (!strcmp(var.value, "4"))
+         {
+            WIDTH = 1320;
+            HEIGHT = 1640;
+            point_size = 3;
+         }
+   }
+   retro_get_system_av_info(&av_info);
+   environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &av_info);
 }
 
 void retro_unload_game(void)
@@ -362,4 +407,9 @@ void retro_run(void)
 	}
 
 	video_cb(framebuffer, WIDTH, HEIGHT, WIDTH * sizeof(unsigned short));
+	 bool updated = false;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+   {
+      check_variables();
+   }
 }
