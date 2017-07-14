@@ -246,36 +246,20 @@ static INLINE void draw_point(int x, int y, unsigned char col)
             framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
 }
 
-/* plain old bresenham, AA etc. is up to the FE */
 static INLINE void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
 {
-	int dx = abs(x1-x0);
-	int dy = abs(y1-y0);
-	int sx = x0 < x1 ? 1 : -1;
-	int sy = y0 < y1 ? 1 : -1;
-	int err = dx - dy;
-	int e2;
-
-	while(1)
+  int dx = abs(x1-x0), sx = x0<x1 ? 1 : -1;
+  int dy = abs(y1-y0), sy = y0<y1 ? 1 : -1; 
+  int err = (dx>dy ? dx : -dy)/2, e2;
+ 
+  while(1)
    {
       draw_point(x0, y0, col);
-
-      if (x0 == x1 && y0 == y1)
-         break;
-
-      e2 = 2 * err;
-      if (e2 > -dy)
-      {
-         err = err - dy;
-         x0 = x0 + sx;
-      }
-
-      if (e2 < dx)
-      {
-         err = err + dx;
-         y0 = y0 + sy;
-      }
-   }
+    if (x0==x1 && y0==y1) break;
+    e2 = err;
+    if (e2 >-dx) { err -= dy; x0 += sx; }
+    if (e2 < dy) { err += dx; y0 += sy; }
+  }
 }
 
 void osint_render(void)
