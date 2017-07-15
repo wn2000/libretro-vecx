@@ -298,102 +298,102 @@ void osint_render(void)
 void retro_run(void)
 {
 	int i;
+	bool updated = false;
 	unsigned char asamples[882] = {0};
 	uint8_t buffer[882] = {0};
 
-   (void)asamples;
-	
-   /* poll input and update states;
-      buttons (snd_regs[14], 4 buttons/pl => 4 bits starting from LSB, |= for rel. &= ~ for push)
-      analog stick (alg_jch0, alg_jch1, => -1 (0x00) .. 0 (0x80) .. 1 (0xff)) */
+	(void)asamples;
+
+	/* poll input and update states;
+	   buttons (snd_regs[14], 4 buttons/pl => 4 bits starting from LSB, |= for rel. &= ~ for push)
+	   analog stick (alg_jch0, alg_jch1, => -1 (0x00) .. 0 (0x80) .. 1 (0xff)) */
 	poll_cb();
 
-   /* Player 1 */
+	/* Player 1 */
 
 	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
-      alg_jch0 = 0x00;
+		alg_jch0 = 0x00;
 	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
-      alg_jch0 = 0xff;
+		alg_jch0 = 0xff;
 	else
-      alg_jch0 = 0x80;
-	
-	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
-      alg_jch1 = 0xff;
-	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
-      alg_jch1 = 0x00;
-	else
-      alg_jch1 = 0x80;
+		alg_jch0 = 0x80;
 
-	
+	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
+		alg_jch1 = 0xff;
+	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
+		alg_jch1 = 0x00;
+	else
+		alg_jch1 = 0x80;
+
+
 	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
-      snd_regs[14] &= ~1;
+		snd_regs[14] &= ~1;
 	else
-      snd_regs[14] |= 1;
-	
+		snd_regs[14] |= 1;
+
 	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
-      snd_regs[14] &= ~2;
+		snd_regs[14] &= ~2;
 	else
-      snd_regs[14] |= 2;
+		snd_regs[14] |= 2;
 
 	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
-      snd_regs[14] &= ~4;
+		snd_regs[14] &= ~4;
 	else
-      snd_regs[14] |= 4;
+		snd_regs[14] |= 4;
 
 	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
-      snd_regs[14] &= ~8;
+		snd_regs[14] &= ~8;
 	else
-      snd_regs[14] |= 8;
+		snd_regs[14] |= 8;
 
-   /* Player 2 */
+	/* Player 2 */
 	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
-      alg_jch2 = 0x00;
+		alg_jch2 = 0x00;
 	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
-      alg_jch2 = 0xff;
+		alg_jch2 = 0xff;
 	else
-      alg_jch2 = 0x80;
-	
+		alg_jch2 = 0x80;
+
 	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
-      alg_jch3 = 0xff;
+		alg_jch3 = 0xff;
 	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
-      alg_jch3 = 0x00;
+		alg_jch3 = 0x00;
 	else
-      alg_jch3 = 0x80;
+		alg_jch3 = 0x80;
 
 	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
-      snd_regs[14] &= ~16;
+		snd_regs[14] &= ~16;
 	else
-      snd_regs[14] |= 16;
-	
+		snd_regs[14] |= 16;
+
 	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
-      snd_regs[14] &= ~32;
+		snd_regs[14] &= ~32;
 	else
-      snd_regs[14] |= 32;
+		snd_regs[14] |= 32;
 
 	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
-      snd_regs[14] &= ~64;
+		snd_regs[14] &= ~64;
 	else
-      snd_regs[14] |= 64;
-	
+		snd_regs[14] |= 64;
+
 	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
-      snd_regs[14] &= ~128;
+		snd_regs[14] &= ~128;
 	else
-      snd_regs[14] |= 128;
-		
+		snd_regs[14] |= 128;
+
 	vecx_emu(30000); /* 1500000 / 1000 * 20 */
-	
+
 	e8910_callback(NULL, buffer, 882);
-	
+
 	for (i = 0; i < 882; i++)
-   {
+	{
 		short convs = (buffer[i] << 8) - 0x7ff;
 		audio_cb(convs, convs);
 	}
 
 	video_cb(framebuffer, WIDTH, HEIGHT, WIDTH * sizeof(unsigned short));
-	 bool updated = false;
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-   {
-      check_variables();
-   }
+	if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+	{
+		check_variables();
+	}
 }
