@@ -90,10 +90,49 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 	info->geometry.aspect_ratio = 3.0 / 4.0;
 }
 
+static void check_variables(void)
+{
+   struct retro_variable var = {0};
+   struct retro_system_av_info av_info;
+
+   var.key = "vecx_res_multi";
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "1"))
+         {
+            WIDTH = 330;
+            HEIGHT = 410;
+            point_size = 1;
+         }
+      else if (!strcmp(var.value, "2"))
+         {
+            WIDTH = 660;
+            HEIGHT = 820;
+            point_size = 2;
+         }
+      else if (!strcmp(var.value, "3"))
+         {
+            WIDTH = 990;
+            HEIGHT = 1230;
+            point_size = 2;
+         }
+      else if (!strcmp(var.value, "4"))
+         {
+            WIDTH = 1320;
+            HEIGHT = 1640;
+            point_size = 3;
+         }
+   }
+   retro_get_system_av_info(&av_info);
+   environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &av_info);
+}
+
 void retro_init(void)
 {
    unsigned level = 5; 
    environ_cb(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, &level);
+   check_variables();
 }
 
 size_t retro_serialize_size(void)
@@ -144,7 +183,6 @@ bool retro_load_game(const struct retro_game_info *info)
 
    e8910_init_sound();
    memset(framebuffer, 0, sizeof(framebuffer) / sizeof(framebuffer[0]));
-   point_size = 1;
 
    /* start with a fresh BIOS copy */
 	memcpy(rom, bios_data, bios_data_size);
@@ -168,44 +206,6 @@ bool retro_load_game(const struct retro_game_info *info)
    }
 
 	return false;
-}
-
-static void check_variables(void)
-{
-   struct retro_variable var = {0};
-   struct retro_system_av_info av_info;
-
-   var.key = "vecx_res_multi";
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "1"))
-         {
-            WIDTH = 330;
-            HEIGHT = 410;
-            point_size = 1;
-         }
-      else if (!strcmp(var.value, "2"))
-         {
-            WIDTH = 660;
-            HEIGHT = 820;
-            point_size = 2;
-         }
-      else if (!strcmp(var.value, "3"))
-         {
-            WIDTH = 990;
-            HEIGHT = 1230;
-            point_size = 2;
-         }
-      else if (!strcmp(var.value, "4"))
-         {
-            WIDTH = 1320;
-            HEIGHT = 1640;
-            point_size = 3;
-         }
-   }
-   retro_get_system_av_info(&av_info);
-   environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &av_info);
 }
 
 void retro_unload_game(void)
