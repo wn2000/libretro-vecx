@@ -523,7 +523,6 @@ static einline unsigned ea_indexed (unsigned *cycles)
 		*cycles += 5;
 		break;
 	default:
-		printf ("undefined post-byte\n");
 		break;
 	}
 
@@ -1012,7 +1011,6 @@ static einline unsigned exgtfr_read (unsigned reg)
          break;
       default:
          data = 0xffff;
-         printf ("illegal exgtfr reg %.1x\n", reg);
          break;
    }
 
@@ -1054,7 +1052,6 @@ static einline void exgtfr_write (unsigned reg, unsigned data)
          reg_dp = data;
          break;
       default:
-         printf ("illegal exgtfr reg %.1x\n", reg);
          break;
    }
 }
@@ -2531,7 +2528,6 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 			cycles += 8;
 			break;
 		default:
-			printf ("unknown page-1 op code: %.2x\n", op);
 			break;
 		}
 
@@ -2591,14 +2587,12 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 			cycles += 8;
 			break;
 		default:
-			printf ("unknown page-2 op code: %.2x\n", op);
 			break;
 		}
 
 		break;
 
 	default:
-		printf ("unknown page-0 op code: %.2x\n", op);
 		break;
 	}
 
