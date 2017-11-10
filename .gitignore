@@ -7,3 +7,4 @@ tags
 *.dll
 .npmignore
 package.json
+*.so
