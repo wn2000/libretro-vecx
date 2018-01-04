@@ -146,10 +146,12 @@ void e8910_deserialize ( char* dst )
 
 void e8910_write(int r, int v)
 {
-	int old;
+    int old;
 
-    if (snd_regs == NULL) return;
-	snd_regs[r] = v;
+    if (snd_regs == NULL)
+	    return;
+
+    snd_regs[r] = v;
 
 	/* A note about the period of tones, noise and envelope: for speed reasons,*/
 	/* we count down from the period to 0, but careful studies of the chip     */

@@ -92,10 +92,11 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 static void check_variables(void)
 {
-   struct retro_variable var = {0};
+   struct retro_variable var;
    struct retro_system_av_info av_info;
 
-   var.key = "vecx_res_multi";
+   var.value = NULL;
+   var.key   = "vecx_res_multi";
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
