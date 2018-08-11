@@ -33,6 +33,8 @@ static retro_audio_sample_t audio_cb;
 static unsigned char point_size;
 static unsigned short framebuffer[BUFSZ];
 
+extern unsigned char ram[] ;
+
 /* Empty stubs */
 void retro_set_controller_port_device(unsigned port, unsigned device){}
 void retro_cheat_reset(void){}
@@ -46,8 +48,18 @@ void retro_deinit(void)
 {
 }
 
-void *retro_get_memory_data(unsigned id){ return NULL; }
-size_t retro_get_memory_size(unsigned id){ return 0; }
+void *retro_get_memory_data(unsigned id)
+{ 
+   if ( id == RETRO_MEMORY_SYSTEM_RAM )
+      return ram;
+   return NULL; 
+}
+size_t retro_get_memory_size(unsigned id)
+{
+   if ( id == RETRO_MEMORY_SYSTEM_RAM )
+      return 1024;
+   return 0; 
+}
 
 /* Emulator states */
 extern unsigned snd_regs[16];
