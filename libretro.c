@@ -33,7 +33,7 @@ static retro_audio_sample_t audio_cb;
 static unsigned char point_size;
 static unsigned short framebuffer[BUFSZ];
 
-extern unsigned char ram[] ;
+extern unsigned char vecx_ram[1024];
 
 /* Empty stubs */
 void retro_set_controller_port_device(unsigned port, unsigned device){}
@@ -51,7 +51,7 @@ void retro_deinit(void)
 void *retro_get_memory_data(unsigned id)
 { 
    if ( id == RETRO_MEMORY_SYSTEM_RAM )
-      return ram;
+      return vecx_ram;
    return NULL; 
 }
 size_t retro_get_memory_size(unsigned id)

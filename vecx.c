@@ -13,7 +13,7 @@
 
 unsigned char rom[8192];
 unsigned char cart[65536];
-static unsigned char ram[1024];
+unsigned char vecx_ram[1024];
 
 unsigned newbankswitchOffset = 0;
 unsigned bankswitchOffset = 0;
@@ -145,7 +145,7 @@ int vecx_serialize ( char* dst, int size )
 	e6809_serialize(dst); dst += e6809_statesz();
 	e8910_serialize(dst); dst += e8910_statesz();
 	
-	memcpy(dst, ram, 1024); dst += 1024;
+	memcpy(dst, vecx_ram, 1024); dst += 1024;
 
 	memcpy(dst, &snd_select, sizeof(int)); dst += sizeof(int); 
 	memcpy(dst, &via_ora,    sizeof(int)); dst += sizeof(int);
@@ -213,7 +213,7 @@ int vecx_deserialize( char* dst, int size )
 	e6809_deserialize(dst); dst += e6809_statesz();
 	e8910_deserialize(dst); dst += e8910_statesz();
 
-	memcpy(ram, dst, 1024); dst += 1024;
+	memcpy(vecx_ram, dst, 1024); dst += 1024;
 
 	memcpy(&snd_select,dst,  sizeof(int)); dst += sizeof(int);
 	memcpy(&via_ora,   dst,  sizeof(int)); dst += sizeof(int);
@@ -381,7 +381,7 @@ unsigned char read8 (unsigned address)
 		if (address & 0x800) {
 			/* ram */
 
-			data = ram[address & 0x3ff];
+			data = vecx_ram[address & 0x3ff];
 		} else if (address & 0x1000) {
 			/* io */
 
@@ -523,7 +523,7 @@ void write8 (unsigned address, unsigned char data)
 		/* it is possible for both ram and io to be written at the same! */
 
 		if (address & 0x800) {
-			ram[address & 0x3ff] = data;
+			vecx_ram[address & 0x3ff] = data;
 		}
 
 		if (address & 0x1000) {
@@ -725,7 +725,7 @@ void vecx_reset (void)
 	/* ram */
 
 	for (r = 0; r < 1024; r++) {
-		ram[r] = r & 0xff;
+		vecx_ram[r] = r & 0xff;
 	}
 
 	for (r = 0; r < 16; r++) {
