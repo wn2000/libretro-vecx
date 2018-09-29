@@ -8,3 +8,4 @@ tags
 .npmignore
 package.json
 *.so
+*.a
