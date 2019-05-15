@@ -22,7 +22,12 @@
 
 static int WIDTH = 330;
 static int HEIGHT = 410;
+
+#ifdef _3DS
+#define BUFSZ 135300
+#else
 #define BUFSZ 2164800
+#endif
 
 static retro_video_refresh_t video_cb;
 static retro_input_poll_t poll_cb;
@@ -97,8 +102,14 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 	info->timing.sample_rate    = 44100;
 	info->geometry.base_width   = WIDTH;
 	info->geometry.base_height  = HEIGHT;
+#ifdef _3DS
+	info->geometry.max_width    = 330;
+	info->geometry.max_height   = 410;
+#else
 	info->geometry.max_width    = 1320;
 	info->geometry.max_height   = 1640;
+#endif
+		
 	info->geometry.aspect_ratio = 3.0 / 4.0;
 }
 
