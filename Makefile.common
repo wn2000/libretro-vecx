@@ -1,6 +1,9 @@
 LIBRETRO_COMM_DIR := $(CORE_DIR)/libretro-common
-INCFLAGS     := -I$(CORE_DIR)
+INCFLAGS     := -I$(CORE_DIR) \
+					 -I$(LIBRETRO_COMM_DIR)/include
+
 COREDEFINES   = -D__LIBRETRO__ -DHAVE_STRINGS_H -DHAVE_STDINT_H -DHAVE_INTTYPES_H 
+
 
 ifneq (,$(findstring msvc2003,$(platform)))
 INCFLAGS += -I$(LIBRETRO_COMM_DIR)/include/compat/msvc

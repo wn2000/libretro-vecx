@@ -8,6 +8,8 @@
 #include "e6809.h"
 #include "libretro.h"
 
+#include "libretro_core_options.h"
+
 #define STANDARD_BIOS
 
 #ifdef STANDARD_BIOS
@@ -70,14 +72,12 @@ size_t retro_get_memory_size(unsigned id)
 extern unsigned snd_regs[16];
 
 /* setters */
-void retro_set_environment(retro_environment_t cb) {
-   static const struct retro_variable vars[] = {
-      { "vecx_res_multi", "Res Multiplier; 1|2|3|4" },
-      { NULL, NULL },
-   };
+void retro_set_environment(retro_environment_t cb)
+{
    environ_cb = cb;
-   cb(RETRO_ENVIRONMENT_SET_VARIABLES, (void*)vars);
+   libretro_set_core_options(environ_cb);
 }
+
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb) { audio_cb = cb; }
 void retro_set_input_poll(retro_input_poll_t cb) { poll_cb = cb; }
