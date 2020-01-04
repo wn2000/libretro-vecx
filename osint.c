@@ -42,8 +42,8 @@ static char *romfilename = "rom.dat";
 static char *cartfilename = NULL;
 
 
-unsigned b;
-unsigned char cart[65536];
+static unsigned b;
+static unsigned char cart[65536];
 
 static void init(){
 	FILE *f;
@@ -224,4 +224,3 @@ int main(int argc, char *argv[]){
 
 	return 0;
 }
-
