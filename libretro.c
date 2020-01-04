@@ -174,8 +174,8 @@ bool retro_unserialize(const void *data, size_t size)
 	return vecx_deserialize((char*)data, size);
 }
 
-unsigned b;
-unsigned char cart[65536];
+static unsigned b;
+static unsigned char cart[65536];
 
 bool retro_load_game(const struct retro_game_info *info)
 {
