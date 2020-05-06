@@ -248,7 +248,11 @@ void retro_reset(void)
 	e8910_init_sound();
 }
 
-#define RGB1555(col) ( (col) << 10 | (col) << 5 | (col) )
+static INLINE uint16_t RGB1555(int col)
+{
+    col >>= 2;  /* Lose the bottom two bits because we are squeezing 7 bits of colour into 5. */
+    return col << 10 | col << 5 | col;
+}
 
 static INLINE void draw_point(int x, int y, unsigned char col)
 {
