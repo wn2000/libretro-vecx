@@ -341,20 +341,23 @@ void retro_run(void)
 
 	/* Player 1 */
 
+	
+	alg_jch0=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
+	alg_jch1=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
+	
+	if (alg_jch0 == 128) {
 	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
 		alg_jch0 = 0x00;
 	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
 		alg_jch0 = 0xff;
-	else
-		alg_jch0 = 0x80;
+	}
 
+	if (alg_jch1 == 128) {
 	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
 		alg_jch1 = 0xff;
 	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
 		alg_jch1 = 0x00;
-	else
-		alg_jch1 = 0x80;
-
+	}
 
 	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
 		snd_regs[14] &= ~1;
@@ -377,19 +380,20 @@ void retro_run(void)
 		snd_regs[14] |= 8;
 
 	/* Player 2 */
-	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
-		alg_jch2 = 0x00;
-	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
-		alg_jch2 = 0xff;
-	else
-		alg_jch2 = 0x80;
+	alg_jch2=input_state_cb(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
+	alg_jch3=input_state_cb(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
 
-	if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
-		alg_jch3 = 0xff;
-	else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
-		alg_jch3 = 0x00;
-	else
-		alg_jch3 = 0x80;
+	if (alg_jch2 == 128 && alg_jch3 == 128) {
+		if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
+			alg_jch2 = 0x00;
+		else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+			alg_jch2 = 0xff;
+
+		if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
+			alg_jch3 = 0xff;
+		else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
+			alg_jch3 = 0x00;
+	}
 
 	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
 		snd_regs[14] &= ~16;
