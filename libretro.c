@@ -254,14 +254,14 @@ static INLINE uint16_t RGB1555(int col)
     return col << 10 | col << 5 | col;
 }
 
-static INLINE void draw_point(int x, int y, unsigned char col)
+static INLINE void draw_point(int x, int y, uint16_t col)
 {
    int psz = point_size;
    int sy, ey, sx, ex;
 
    if (psz == 1)
    {
-      framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
+      framebuffer[ (y * WIDTH) + x ] = col;
       return;
    }
 
@@ -273,10 +273,10 @@ static INLINE void draw_point(int x, int y, unsigned char col)
    for (y = sy; y <= ey; y++)
       for (x = sx; x <= ex; x++)
          if ( (x-sx) * (x-sx) + (y - sy) * (y - sy) <= psz * psz)
-            framebuffer[ (y * WIDTH) + x ] = RGB1555(col);
+            framebuffer[ (y * WIDTH) + x ] = col;
 }
 
-static INLINE void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, unsigned char col)
+static INLINE void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, uint16_t col)
 {
   int dx = abs(x1-x0), sx = x0<x1 ? 1 : -1;
   int dy = abs(y1-y0), sy = y0<y1 ? 1 : -1; 
@@ -315,9 +315,9 @@ void osint_render(void)
 			continue;
 	    
 		if (x0 - x1 == 0 && y0 - y1 == 0)
-			draw_point(x0, y0, intensity);
+			draw_point(x0, y0, RGB1555(intensity));
 		else
-			draw_line(x0, y0, x1, y1, intensity);
+			draw_line(x0, y0, x1, y1, RGB1555(intensity));
 	}
 }
 
