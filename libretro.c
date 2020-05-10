@@ -10,7 +10,7 @@
 
 #include "libretro_core_options.h"
 
-//#define STANDARD_BIOS
+#define STANDARD_BIOS
 
 #ifdef STANDARD_BIOS
 #include "bios/system.h"
@@ -137,8 +137,8 @@ static void check_variables(void)
          }
       else if (!strcmp(var.value, "3"))
          {
-            WIDTH = 869; // 990;
-            HEIGHT = 1080; // 1230;
+            WIDTH = 990;
+            HEIGHT = 1230;
             point_size = 2;
          }
       else if (!strcmp(var.value, "4"))
