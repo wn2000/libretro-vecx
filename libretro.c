@@ -256,24 +256,57 @@ static INLINE uint16_t RGB1555(int col)
 
 static INLINE void draw_point(int x, int y, uint16_t col)
 {
-   int psz = point_size;
-   int sy, ey, sx, ex;
-
-   if (psz == 1)
+   if (point_size == 1)
    {
       framebuffer[ (y * WIDTH) + x ] = col;
-      return;
    }
+   else if (point_size == 2)
+   {
+      /* point shape:
+       * .X.
+       * XXX
+       * .X.
+       */
+      int pos = y * WIDTH + x;
+      framebuffer[ pos ] = col;
+      if ( x > 0 )
+	  framebuffer[ pos - 1 ] = col;
+      if ( x < WIDTH -1 )
+	  framebuffer[ pos + 1 ] = col;
+      if ( y > 0)
+	  framebuffer[ pos - WIDTH ] = col;
+      if ( y < HEIGHT - 1 )
+	  framebuffer[ pos + WIDTH ] = col;
+   }
+   else
+   {
+      /* point shape: 
+       * .XX.
+       * XXXX
+       * XXXX
+       * .XX.
+       */
 
-   sy = y - psz > 0        ? y - psz : 0;
-   ey = y + psz<= HEIGHT-1 ? y + psz : HEIGHT - 1;
-   sx = x - psz > 0        ? x - psz : 0;
-   ex = x + psz<= WIDTH -1 ? x + psz : WIDTH  - 1;
+      x--;
+      y--;
 
-   for (y = sy; y <= ey; y++)
-      for (x = sx; x <= ex; x++)
-         if ( (x-sx) * (x-sx) + (y - sy) * (y - sy) <= psz * psz)
-            framebuffer[ (y * WIDTH) + x ] = col;
+      int posy = y * WIDTH;
+
+      for (int dy = 0 ; dy < 4 ; dy++, posy += WIDTH)
+      {
+	  int y1 = y + dy;
+
+	  if (0 <= y1 && y1 < HEIGHT) {
+
+	      for (int dx = 0 ; dx < 4 ; dx++) {
+		  int x1 = x + dx;
+
+		  if (0 <= x1 && x1 < WIDTH && ( dx % 3 != 0 || dy % 3 != 0))
+                      framebuffer[ posy + x1 ] = col;
+	      }
+	  }
+      }
+   }
 }
 
 static INLINE void draw_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1, uint16_t col)
