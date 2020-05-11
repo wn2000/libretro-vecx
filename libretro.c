@@ -157,7 +157,7 @@ static void check_variables(void)
    var.key   = "vecx_scale";
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
        SCALEX = atof(var.value);
-       SCALEX = atof(var.value);
+       SCALEY = atof(var.value);
    }
    SHIFTX = 0.5-0.5*SCALEX;
    SHIFTY = 0.5-0.5*SCALEY;
