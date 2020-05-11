@@ -10,7 +10,7 @@
 
 #include "libretro_core_options.h"
 
-#define STANDARD_BIOS
+//#define STANDARD_BIOS
 
 #ifdef STANDARD_BIOS
 #include "bios/system.h"
@@ -24,6 +24,10 @@
 
 static int WIDTH = 330;
 static int HEIGHT = 410;
+static float SHIFTX = 0;
+static float SHIFTY = 0;
+static float SCALEX = 1.;
+static float SCALEY = 1.;
 
 #ifdef _3DS
 #define BUFSZ 135300
@@ -148,6 +152,15 @@ static void check_variables(void)
             point_size = 3;
          }
    }
+
+   var.value = NULL;
+   var.key   = "vecx_scale";
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+       SCALEX = atof(var.value);
+       SCALEX = atof(var.value);
+   }
+   SHIFTX = 0.5-0.5*SCALEX;
+   SHIFTY = 0.5-0.5*SCALEY;
    retro_get_system_av_info(&av_info);
    environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &av_info);
 }
@@ -258,7 +271,8 @@ static INLINE void draw_point(int x, int y, uint16_t col)
 {
    if (point_size == 1)
    {
-      framebuffer[ (y * WIDTH) + x ] = col;
+      if (0 <= x && x < WIDTH && 0 <= y && y < HEIGHT)
+          framebuffer[ (y * WIDTH) + x ] = col;
    }
    else if (point_size == 2)
    {
@@ -268,7 +282,8 @@ static INLINE void draw_point(int x, int y, uint16_t col)
        * .X.
        */
       int pos = y * WIDTH + x;
-      framebuffer[ pos ] = col;
+      if (0 <= x && x < WIDTH && 0 <= y && y < HEIGHT)
+          framebuffer[ pos ] = col;
       if ( x > 0 )
 	  framebuffer[ pos - 1 ] = col;
       if ( x < WIDTH -1 )
@@ -339,10 +354,10 @@ void osint_render(void)
 	for (i = 0; i < vector_draw_cnt; i++)
    {
 		unsigned char intensity = vectors_draw[i].color;
-		x0 = (float)vectors_draw[i].x0 / (float)ALG_MAX_X * (float)WIDTH;
-		x1 = (float)vectors_draw[i].x1 / (float)ALG_MAX_X * (float)WIDTH;
-		y0 = (float)vectors_draw[i].y0 / (float)ALG_MAX_Y * (float)HEIGHT;
-		y1 = (float)vectors_draw[i].y1 / (float)ALG_MAX_Y * (float)HEIGHT;
+		x0 = ((float)vectors_draw[i].x0 / (float)ALG_MAX_X * SCALEX + SHIFTX) * (float)WIDTH;
+		x1 = ((float)vectors_draw[i].x1 / (float)ALG_MAX_X * SCALEX + SHIFTX) * (float)WIDTH;
+		y0 = ((float)vectors_draw[i].y0 / (float)ALG_MAX_Y * SCALEY + SHIFTY) * (float)HEIGHT;
+		y1 = ((float)vectors_draw[i].y1 / (float)ALG_MAX_Y * SCALEY + SHIFTY) * (float)HEIGHT;
 
 		if (intensity == 128)
 			continue;
