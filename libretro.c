@@ -305,6 +305,7 @@ static INLINE void draw_point(int x, int y, uint16_t col)
    }
    else
    {
+      int dy, posy;
       /* point shape: 
        * .XX.
        * XXXX
@@ -315,15 +316,17 @@ static INLINE void draw_point(int x, int y, uint16_t col)
       x--;
       y--;
 
-      int posy = y * WIDTH;
+      posy = y * WIDTH;
 
-      for (int dy = 0 ; dy < 4 ; dy++, posy += WIDTH)
+      for (dy = 0 ; dy < 4 ; dy++, posy += WIDTH)
       {
 	  int y1 = y + dy;
 
-	  if (0 <= y1 && y1 < HEIGHT) {
-
-	      for (int dx = 0 ; dx < 4 ; dx++) {
+	  if (0 <= y1 && y1 < HEIGHT)
+	  {
+	      int dx;
+	      for (dx = 0 ; dx < 4 ; dx++)
+	      {
 		  int x1 = x + dx;
 
 		  if (0 <= x1 && x1 < WIDTH && ( dx % 3 != 0 || dy % 3 != 0))
