@@ -241,7 +241,7 @@ static void compile_program(void)
                                           
                                           " void main()\n"
                                           "{\n"
-                                          "   vec2 pos = position + (offset / 64.0) * scale;\n"
+                                          "   vec2 pos = position + (offset / 64.0) * scale * colour / 127.0;\n"
                                           "   fragColour = colour * brightness / (127.0 * 255.0);\n" 
                                           "   float tx = floor(packedTexCoords * 0.0625);\n" // RPI gets upset if we divide by 16 so multiply by 1/16 instead.
                                           "   float ty = packedTexCoords - tx * 16.0;\n"
