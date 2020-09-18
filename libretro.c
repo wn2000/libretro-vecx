@@ -293,7 +293,8 @@ static void compile_program(void)
    offsetAttribLocation = glGetAttribLocation(ProgramID, "offset");
    colourAttribLocation = glGetAttribLocation(ProgramID, "colour");
    packedTexCoordsAttribLocation = glGetAttribLocation(ProgramID, "packedTexCoords");
-   MakeMVPMatrix(mvpMatrix, 0.0f, ALG_MAX_Y-1, ALG_MAX_X-1, 0.0f);
+//   MakeMVPMatrix(mvpMatrix, 0.0f, ALG_MAX_Y-1, ALG_MAX_X-1, 0.0f);
+   MakeMVPMatrix(mvpMatrix, 0.0f-(SHIFTX*ALG_MAX_X), (ALG_MAX_Y-1)/SCALEY-(SHIFTY*ALG_MAX_Y), (ALG_MAX_X-1)/SCALEX-(SHIFTX*ALG_MAX_X), 0.0f-(SHIFTY*ALG_MAX_Y));
 }
 
 static void context_reset(void)
@@ -861,18 +862,18 @@ void osint_render(void)
         for (i = 0; i < vector_draw_cnt; i++)
         {
             unsigned char intensity = vectors_draw[i].color;
-            x0 = (float)vectors_draw[i].x0 / (float)ALG_MAX_X * (float)WIDTH;
-            x1 = (float)vectors_draw[i].x1 / (float)ALG_MAX_X * (float)WIDTH;
-            y0 = (float)vectors_draw[i].y0 / (float)ALG_MAX_Y * (float)HEIGHT;
-            y1 = (float)vectors_draw[i].y1 / (float)ALG_MAX_Y * (float)HEIGHT;
+            x0 = ((float)vectors_draw[i].x0 / (float)ALG_MAX_X * SCALEX + SHIFTX) * (float)WIDTH;
+            x1 = ((float)vectors_draw[i].x1 / (float)ALG_MAX_X * SCALEX + SHIFTX) * (float)WIDTH;
+            y0 = ((float)vectors_draw[i].y0 / (float)ALG_MAX_Y * SCALEY + SHIFTY) * (float)HEIGHT;
+            y1 = ((float)vectors_draw[i].y1 / (float)ALG_MAX_Y * SCALEY + SHIFTY) * (float)HEIGHT;
 
             if (intensity == 128)
                 continue;
             
             if (x0 - x1 == 0 && y0 - y1 == 0)
-                draw_point(x0, y0, intensity);
+                draw_point(x0, y0, RGB1555(intensity));
             else
-                draw_line(x0, y0, x1, y1, intensity);
+                draw_line(x0, y0, x1, y1, RGB1555(intensity));
         }
     }
 #ifdef HAS_GPU    
