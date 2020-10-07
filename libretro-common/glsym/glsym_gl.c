@@ -22,7 +22,7 @@
 
 #include <stddef.h>
 
-#include "glsym.h"
+#include <glsym/glsym.h>
 
 #define SYM(x) { "gl" #x, &(gl##x) }
 

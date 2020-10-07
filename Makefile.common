@@ -24,11 +24,12 @@ SOURCES_C  += $(CORE_DIR)/e6809.c \
               $(CORE_DIR)/vecx.c
 
 ifeq ($(HAS_GPU), 1)
-   SOURCES_C  += $(CORE_DIR)/glsym/rglgen.c
+   INCFLAGS += -I$(LIBRETRO_COMM_DIR)/include
+   SOURCES_C  += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
 
    ifeq ($(GLES), 1)
-      SOURCES_C += $(CORE_DIR)/glsym/glsym_es2.c
+      SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
    else
-      SOURCES_C += $(CORE_DIR)/glsym/glsym_gl.c
+      SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
    endif
 endif
