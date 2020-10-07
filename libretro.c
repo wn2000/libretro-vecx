@@ -11,8 +11,8 @@
 #include "libretro.h"
 #include "libretro_core_options.h"
 #ifdef HAS_GPU
-#include "glsym/glsym.h"
 #include "dots.h"
+#include "glsym/glsym.h"
 #endif
 
 retro_log_printf_t log_cb;
@@ -38,6 +38,7 @@ static float SCALEY = 1.;
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #ifdef HAS_GPU
+
 #if defined(HAVE_PSGL)
 #define RARCH_GL_FRAMEBUFFER GL_FRAMEBUFFER_OES
 #define RARCH_GL_FRAMEBUFFER_COMPLETE GL_FRAMEBUFFER_COMPLETE_OES
@@ -51,6 +52,7 @@ static float SCALEY = 1.;
 #define RARCH_GL_FRAMEBUFFER_COMPLETE GL_FRAMEBUFFER_COMPLETE
 #define RARCH_GL_COLOR_ATTACHMENT0 GL_COLOR_ATTACHMENT0
 #endif
+
 static struct retro_hw_render_callback hw_render;
 #endif
 
@@ -71,6 +73,7 @@ static unsigned short framebuffer[BUFSZ];
 
 #ifdef HAS_GPU
 static bool usingHWContext = false;
+
 static GLuint ProgramID;
 static GLuint mvpMatrixLocation;
 static GLuint positionAttribLocation;
@@ -83,20 +86,7 @@ static GLuint brightnessLocation;
 static GLuint DotTextureID;
 static GLuint BloomTextureID;
 static GLuint vbo;
-GLfloat mvpMatrix[16];
-
-static const float dotScale        = 1.0f;
-static float lineWidth             = 75.0f;
-static float lineBrightness        = 216.0f;
-static float bloomWidthMultiplier  = 8.0f;
-static float maxAlpha              = 0.2f;
-static const float bloomBrightness = 200.0f;
-
-typedef struct
-{
-   float x;
-   float y;
-} VECX_POINT;
+GLfloat mvp_matrix[16];
 
 typedef struct
 {
@@ -115,6 +105,20 @@ typedef struct
 
 #define MAX_VECTORS 50000
 static GLVERTEX vertices[MAX_VECTORS * 18];
+
+static const float dotScale        = 1.0f;
+static float lineWidth             = 75.0f;
+static float lineBrightness        = 216.0f;
+static float bloomWidthMultiplier  = 8.0f;
+static float maxAlpha              = 0.2f;
+static const float bloomBrightness = 200.0f;
+
+typedef struct
+{
+   float x;
+   float y;
+} VECX_POINT;
+
 #endif
 extern unsigned char vecx_ram[1024];
 
@@ -141,9 +145,6 @@ size_t retro_get_memory_size(unsigned id)
       return 1024;
    return 0; 
 }
-
-/* Emulator states */
-extern unsigned snd_regs[16];
 
 /* setters */
 void retro_set_environment(retro_environment_t cb)
@@ -187,8 +188,31 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.aspect_ratio = 33.0 / 41.0;
 }
 
+
+#define POINT_NEAR (-1.0f)
+#define POINT_FAR  (1.0f)
+
+static void make_mvp_matrix(float mvp_mat[16],
+      float left, float bottom, float right, float top)
+{
+   int i;
+
+   for (i=0; i<16; i++)
+      mvp_mat[i] = 0;
+
+   mvp_mat[0]    = 2.0f/(right-left);
+   mvp_mat[3]    = -(right+left)/(right-left);
+   mvp_mat[5]    = 2.0f/(top-bottom);
+   mvp_mat[7]    = -(top+bottom)/(top-bottom);
+   mvp_mat[10]   = -2.0f/(POINT_FAR - POINT_NEAR);
+   mvp_mat[11]   = -(POINT_FAR + POINT_NEAR)/(POINT_FAR - POINT_NEAR);
+   mvp_mat[15]   = 1.0f;
+}
+
+
 #ifdef HAS_GPU
-void CreateImage(uint32_t width, uint32_t height, const uint8_t *data, GLuint *textureId)
+static void create_gl_image(
+      uint32_t width, uint32_t height, const uint8_t *data, GLuint *textureId)
 {
    GLenum err;
    glGenTextures(1, textureId);
@@ -206,27 +230,7 @@ void CreateImage(uint32_t width, uint32_t height, const uint8_t *data, GLuint *t
       log_cb(RETRO_LOG_ERROR, "Error loading GL texture: %x\n", err);
 }
 
-#define POINT_NEAR (-1.0f)
-#define POINT_FAR  (1.0f)
-
-void MakeMVPMatrix(float mvpMatrix[16],
-      float left, float bottom, float right, float top)
-{
-   int i;
-
-   for (i=0; i<16; i++)
-      mvpMatrix[i] = 0;
-
-   mvpMatrix[0] = 2.0f/(right-left);
-   mvpMatrix[3] = -(right+left)/(right-left);
-   mvpMatrix[5] = 2.0f/(top-bottom);
-   mvpMatrix[7] = -(top+bottom)/(top-bottom);
-   mvpMatrix[10] = -2.0f/(POINT_FAR - POINT_NEAR);
-   mvpMatrix[11] = -(POINT_FAR + POINT_NEAR)/(POINT_FAR - POINT_NEAR);
-   mvpMatrix[15] = 1.0f;
-}
-
-static void compile_program(void)
+static void compile_gl_program(void)
 {
    const GLchar *vertexShaderSource[] = {
       "attribute vec2 position;\n"
@@ -250,7 +254,6 @@ static void compile_program(void)
          "   gl_Position = vec4(pos, 0.0, 1.0) * mvpMatrix;\n"
          "}\n"
    };
-
    const char *fragmentShaderSource[] = {
       "#ifdef GL_ES\n"
          "precision mediump float;\n"
@@ -268,9 +271,7 @@ static void compile_program(void)
          "}\n"
    };
 
-
-
-   ProgramID = glCreateProgram();
+   ProgramID   = glCreateProgram();
    GLuint vert = glCreateShader(GL_VERTEX_SHADER);
    GLuint frag = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -284,27 +285,24 @@ static void compile_program(void)
    glLinkProgram(ProgramID);
    glDeleteShader(vert);
    glDeleteShader(frag);
-   mvpMatrixLocation = glGetUniformLocation(ProgramID, "mvpMatrix");
-   textureLocation = glGetUniformLocation(ProgramID, "texture");
-   scaleLocation = glGetUniformLocation(ProgramID, "scale");
-   brightnessLocation = glGetUniformLocation(ProgramID, "brightness");
-   positionAttribLocation = glGetAttribLocation(ProgramID, "position");
-   offsetAttribLocation = glGetAttribLocation(ProgramID, "offset");
-   colourAttribLocation = glGetAttribLocation(ProgramID, "colour");
+   mvpMatrixLocation             = glGetUniformLocation(ProgramID, "mvpMatrix");
+   textureLocation               = glGetUniformLocation(ProgramID, "texture");
+   scaleLocation                 = glGetUniformLocation(ProgramID, "scale");
+   brightnessLocation            = glGetUniformLocation(ProgramID, "brightness");
+   positionAttribLocation        = glGetAttribLocation(ProgramID, "position");
+   offsetAttribLocation          = glGetAttribLocation(ProgramID, "offset");
+   colourAttribLocation          = glGetAttribLocation(ProgramID, "colour");
    packedTexCoordsAttribLocation = glGetAttribLocation(ProgramID, "packedTexCoords");
-#if 0
-   MakeMVPMatrix(mvpMatrix, 0.0f, ALG_MAX_Y-1, ALG_MAX_X-1, 0.0f);
-#endif
-   MakeMVPMatrix(mvpMatrix, 0.0f-(SHIFTX*ALG_MAX_X), (ALG_MAX_Y-1)/SCALEY-(SHIFTY*ALG_MAX_Y), (ALG_MAX_X-1)/SCALEX-(SHIFTX*ALG_MAX_X), 0.0f-(SHIFTY*ALG_MAX_Y));
+   make_mvp_matrix(mvp_matrix, 0.0f-(SHIFTX*ALG_MAX_X), (ALG_MAX_Y-1)/SCALEY-(SHIFTY*ALG_MAX_Y), (ALG_MAX_X-1)/SCALEX-(SHIFTX*ALG_MAX_X), 0.0f-(SHIFTY*ALG_MAX_Y));
 }
 
 static void context_reset(void)
 {
    rglgen_resolve_symbols(hw_render.get_proc_address);
 
-   compile_program();
-   CreateImage(DotWidth, DotHeight, DotImage, &DotTextureID);
-   CreateImage(BloomWidth, BloomHeight, BloomImage, &BloomTextureID);
+   compile_gl_program();
+   create_gl_image(DotWidth, DotHeight, DotImage, &DotTextureID);
+   create_gl_image(BloomWidth, BloomHeight, BloomImage, &BloomTextureID);
 #if 0
    setup_vao();
 #endif
@@ -343,7 +341,7 @@ static void context_destroy(void)
    }
 }
 
-#ifdef HAVE_OPENGLES
+#ifdef GLES  
 static bool retro_init_hw_context(bool useHardwareContext)
 {
    if (useHardwareContext)
@@ -465,9 +463,7 @@ static void check_variables(void)
       }
    }
    else
-   {
       usingHWContext = false;
-   }
 
    if (usingHWContext)
    {
@@ -543,26 +539,26 @@ static void check_variables(void)
       {
          if (!strcmp(var.value, "1"))
          {
-            WIDTH = 330;
-            HEIGHT = 410;
+            WIDTH      = 330;
+            HEIGHT     = 410;
             point_size = 1;
          }
          else if (!strcmp(var.value, "2"))
          {
-            WIDTH = 660;
-            HEIGHT = 820;
+            WIDTH      = 660;
+            HEIGHT     = 820;
             point_size = 2;
          }
          else if (!strcmp(var.value, "3"))
          {
-            WIDTH = 990;
-            HEIGHT = 1230;
+            WIDTH      = 990;
+            HEIGHT     = 1230;
             point_size = 2;
          }
          else if (!strcmp(var.value, "4"))
          {
-            WIDTH = 1320;
-            HEIGHT = 1640;
+            WIDTH      = 1320;
+            HEIGHT     = 1640;
             point_size = 3;
          }
       }
@@ -689,9 +685,7 @@ bool retro_load_game(const struct retro_game_info *info)
       memset(cart, 0, cart_sz);
       memcpy(cart, info->data, info->size);
       for(b = 0; b < sizeof(cart); b++)
-      {
          set_cart(b, cart[b]);
-      }
 
       vecx_reset();
       e8910_init_sound();
@@ -810,17 +804,18 @@ static INLINE void draw_line(
 }
 
 #ifdef HAS_GPU
-static inline uint32_t MakeAll(float dx, float dy, int8_t col, uint8_t tc)
+static inline uint32_t make_all(float dx, float dy, int8_t col, uint8_t tc)
 {
    return (((int8_t)(dx*64.0f+0.5f)) & 0xff) | (((int8_t)(dy*64.0f+0.5f) & 0xff) << 8) | ((col << 16)&0xff0000) | (tc << 24);
 }
 
-static inline float Dot2D(VECX_POINT a, VECX_POINT b)
+static inline float dot2d(VECX_POINT a, VECX_POINT b)
 {
    return a.x * b.x + a.y * b.y;
 }
 
-static void IntersectionPoint(VECX_POINT *res, VECX_POINT a, VECX_POINT b, VECX_POINT c, VECX_POINT d)
+static void intersection_point(VECX_POINT *res,
+      VECX_POINT a, VECX_POINT b, VECX_POINT c, VECX_POINT d)
 {
    float a1          = b.y - a.y;
    float b1          = a.x - b.x;
@@ -909,7 +904,7 @@ void osint_render(void)
       glEnable(GL_BLEND);
 
       glUseProgram(ProgramID);
-      glUniformMatrix4fv(mvpMatrixLocation, 1, GL_FALSE, mvpMatrix);
+      glUniformMatrix4fv(mvpMatrixLocation, 1, GL_FALSE, mvp_matrix);
       glVertexAttribPointer(positionAttribLocation, 2, GL_UNSIGNED_SHORT, GL_FALSE, sizeof(GLVERTEX), &(vertices[0].pos));
       glEnableVertexAttribArray(positionAttribLocation);
       glVertexAttribPointer(offsetAttribLocation, 2, GL_BYTE, GL_FALSE, sizeof(GLVERTEX), &(vertices[0].offsets));
@@ -936,20 +931,20 @@ void osint_render(void)
 #endif
             {
                vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-               vertices[num_verts].rest = MakeAll(-dotScale, dotScale, colour, 0x02);
+               vertices[num_verts].rest = make_all(-dotScale, dotScale, colour, 0x02);
                num_verts++;
                vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-               vertices[num_verts].rest = MakeAll(dotScale, dotScale, colour, 0x22);
+               vertices[num_verts].rest = make_all(dotScale, dotScale, colour, 0x22);
                num_verts++;
                vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-               vertices[num_verts].rest = MakeAll(-dotScale, -dotScale, colour, 0x00);
+               vertices[num_verts].rest = make_all(-dotScale, -dotScale, colour, 0x00);
                num_verts++;
                vertices[num_verts] = vertices[num_verts-2];
                num_verts++;
                vertices[num_verts] = vertices[num_verts-2];
                num_verts++;
                vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-               vertices[num_verts].rest = MakeAll(dotScale, -dotScale, colour, 0x20);
+               vertices[num_verts].rest = make_all(dotScale, -dotScale, colour, 0x20);
                num_verts++;
 
                continuing = 0;
@@ -967,20 +962,20 @@ void osint_render(void)
             dy /= length;
 
             vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-            vertices[num_verts].rest = MakeAll((-dy-dx), (dx-dy), colour, 0x20);
+            vertices[num_verts].rest = make_all((-dy-dx), (dx-dy), colour, 0x20);
             num_verts++;
             vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-            vertices[num_verts].rest = MakeAll((dy-dx), (-dx-dy), colour, 0x22);
+            vertices[num_verts].rest = make_all((dy-dx), (-dx-dy), colour, 0x22);
             num_verts++;
             vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-            vertices[num_verts].rest = MakeAll(-dy, dx, colour, 0x10);
+            vertices[num_verts].rest = make_all(-dy, dx, colour, 0x10);
             num_verts++;
             vertices[num_verts] = vertices[num_verts-2];
             num_verts++;
             vertices[num_verts] = vertices[num_verts-2];
             num_verts++;
             vertices[num_verts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-            vertices[num_verts].rest = MakeAll(dy, -dx, colour, 0x12);
+            vertices[num_verts].rest = make_all(dy, -dx, colour, 0x12);
             num_verts++;
          }
 
@@ -1008,7 +1003,7 @@ void osint_render(void)
                   this_vec.y   = dy;
                   next_vec.x   = localNextDx;
                   next_vec.y   = localNextDy;
-                  dot          = Dot2D(this_vec, next_vec);
+                  dot          = dot2d(this_vec, next_vec);
 
                   if (dot > 0.99f)   /* If (nearly) parallel. */
                   {
@@ -1034,8 +1029,8 @@ void osint_render(void)
                      VECX_POINT c1 = {vectors_draw[i+1].x0+localNextDy, vectors_draw[i+1].y0-localNextDx};
                      VECX_POINT d1 = {vectors_draw[i+1].x1+localNextDy, vectors_draw[i+1].y1-localNextDx};
 
-                     IntersectionPoint(&p0, a, b, c, d);
-                     IntersectionPoint(&p1, a1, b1, c1, d1);
+                     intersection_point(&p0, a, b, c, d);
+                     intersection_point(&p1, a1, b1, c1, d1);
 
                      vectors_draw[i].x1   = (p0.x + p1.x) / 2.0f;
                      vectors_draw[i+1].x0 = vectors_draw[i].x1;
@@ -1067,7 +1062,7 @@ void osint_render(void)
          num_verts++;
 
          vertices[num_verts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-         vertices[num_verts].rest = MakeAll(-nextDy, nextDx, colour, 0x10);
+         vertices[num_verts].rest = make_all(-nextDy, nextDx, colour, 0x10);
          num_verts++;
          vertices[num_verts] = vertices[num_verts-2];
          vertices[num_verts].colour = colour;
@@ -1076,7 +1071,7 @@ void osint_render(void)
          vertices[num_verts].colour = colour;
          num_verts++;
          vertices[num_verts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-         vertices[num_verts].rest = MakeAll(nextDy, -nextDx, colour, 0x12);
+         vertices[num_verts].rest = make_all(nextDy, -nextDx, colour, 0x12);
          num_verts++;
 
          if (!continuing)
@@ -1089,14 +1084,14 @@ void osint_render(void)
             vertices[num_verts].colour = colour;
             num_verts++;
             vertices[num_verts].pos    = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-            vertices[num_verts].rest   = MakeAll((-nextDy+nextDx), (nextDx+nextDy), colour, 0x00);
+            vertices[num_verts].rest   = make_all((-nextDy+nextDx), (nextDx+nextDy), colour, 0x00);
             num_verts++;
             vertices[num_verts]        = vertices[num_verts-2];
             num_verts++;
             vertices[num_verts]        = vertices[num_verts-2];
             num_verts++;
             vertices[num_verts].pos    = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-            vertices[num_verts].rest   = MakeAll((nextDy+nextDx), (-nextDx+nextDy), colour, 0x02);
+            vertices[num_verts].rest   = make_all((nextDy+nextDx), (-nextDx+nextDy), colour, 0x02);
             num_verts++;
          }
       }
@@ -1153,6 +1148,8 @@ void retro_run(void)
    int i, ret;
    bool updated = false;
    uint8_t buffer[882];
+   /* Emulator states */
+   extern unsigned snd_regs[16];
 
    /* poll input and update states;
       buttons (snd_regs[14], 4 buttons/pl => 4 bits starting from LSB, |= for rel. &= ~ for push)
@@ -1162,8 +1159,8 @@ void retro_run(void)
    /* Player 1 */
 
 
-   alg_jch0=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
-   alg_jch1=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
+   alg_jch0 = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
+   alg_jch1 = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
 
    if (alg_jch0 == 128)
    {
@@ -1245,6 +1242,7 @@ void retro_run(void)
       snd_regs[14] |= 128;
 
    ret = vecx_emu(30000); /* 1500000 / 1000 * 20 */
+   (void)ret;
 
    e8910_callback(NULL, buffer, 882);
 

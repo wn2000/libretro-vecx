@@ -14,8 +14,8 @@ else
    COREDEFINES += -DINLINE=inline
 endif
 
-ifeq ($(HAVE_OPENGL), 1)
-   COREDEFINES += -DHAVE_OPENGL
+ifeq ($(HAS_GPU), 1)
+	COREDEFINES += -DHAS_GPU
 endif
 
 SOURCES_C  += $(CORE_DIR)/e6809.c \
@@ -23,7 +23,7 @@ SOURCES_C  += $(CORE_DIR)/e6809.c \
               $(CORE_DIR)/libretro.c \
               $(CORE_DIR)/vecx.c
 
-ifeq ($(HAVE_OPENGL), 1)
+ifeq ($(HAS_GPU), 1)
    SOURCES_C  += $(CORE_DIR)/glsym/rglgen.c
 
    ifeq ($(GLES), 1)
