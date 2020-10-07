@@ -85,29 +85,34 @@ static GLuint BloomTextureID;
 static GLuint vbo;
 GLfloat mvpMatrix[16];
 
-static const float dotScale = 1.0f;
-static float lineWidth = 75.0f;
-static float lineBrightness = 216.0f;
-static float bloomWidthMultiplier = 8.0f;
-static float maxAlpha = 0.2f;
+static const float dotScale        = 1.0f;
+static float lineWidth             = 75.0f;
+static float lineBrightness        = 216.0f;
+static float bloomWidthMultiplier  = 8.0f;
+static float maxAlpha              = 0.2f;
 static const float bloomBrightness = 200.0f;
 
-typedef struct {
-    float x;
-    float y;
-} POINT;
+typedef struct
+{
+   float x;
+   float y;
+} VECX_POINT;
 
-typedef struct {
-    uint32_t pos;
-    union {
-        uint32_t rest;
-        struct {
-            uint16_t offsets;
-            GLbyte colour;
-            GLubyte packedTexCoords;
-        };
-    };
+typedef struct
+{
+   uint32_t pos;
+   union
+   {
+      uint32_t rest;
+      struct
+      {
+         uint16_t offsets;
+         GLbyte colour;
+         GLubyte packedTexCoords;
+      };
+   };
 } GLVERTEX;
+
 #define MAX_VECTORS 50000
 static GLVERTEX verticies[MAX_VECTORS * 18];
 #endif
@@ -187,43 +192,39 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 #ifdef HAS_GPU
 void CreateImage(uint32_t width, uint32_t height, const uint8_t *data, GLuint *textureId)
 {
-    GLenum err;
-    glGenTextures(1, textureId);
-    if ((err = glGetError()))
-    {
-        log_cb(RETRO_LOG_ERROR, "Error generating GL texture: %x\n", err);
-    }
-    glBindTexture(GL_TEXTURE_2D, *textureId);
-    if ((err = glGetError()))
-    {
-        log_cb(RETRO_LOG_ERROR, "Error binding GL texture: %x\n", err);
-    }
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width, height, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data);
-    if ((err = glGetError()))
-    {
-        log_cb(RETRO_LOG_ERROR, "Error loading GL texture: %x\n", err);
-    }
+   GLenum err;
+   glGenTextures(1, textureId);
+   if ((err = glGetError()))
+      log_cb(RETRO_LOG_ERROR, "Error generating GL texture: %x\n", err);
+   glBindTexture(GL_TEXTURE_2D, *textureId);
+   if ((err = glGetError()))
+      log_cb(RETRO_LOG_ERROR, "Error binding GL texture: %x\n", err);
+
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width, height, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data);
+   if ((err = glGetError()))
+      log_cb(RETRO_LOG_ERROR, "Error loading GL texture: %x\n", err);
 }
+
+#define POINT_NEAR (-1.0f)
+#define POINT_FAR  (1.0f)
 
 void MakeMVPMatrix(float mvpMatrix[16], float left, float bottom, float right, float top)
 {
-    static const float near = -1.0f;
-    static const float far  = 1.0f;
-    
-    for (int i=0; i<16; i++)
-        mvpMatrix[i] = 0;
-    
-    mvpMatrix[0] = 2.0f/(right-left);
-    mvpMatrix[3] = -(right+left)/(right-left);
-    mvpMatrix[5] = 2.0f/(top-bottom);
-    mvpMatrix[7] = -(top+bottom)/(top-bottom);
-    mvpMatrix[10] = -2.0f/(far-near);
-    mvpMatrix[11] = -(far+near)/(far-near);
-    mvpMatrix[15] = 1.0f;
+   int i;
+
+   for (i=0; i<16; i++)
+      mvpMatrix[i] = 0;
+
+   mvpMatrix[0] = 2.0f/(right-left);
+   mvpMatrix[3] = -(right+left)/(right-left);
+   mvpMatrix[5] = 2.0f/(top-bottom);
+   mvpMatrix[7] = -(top+bottom)/(top-bottom);
+   mvpMatrix[10] = -2.0f/(POINT_FAR - POINT_NEAR);
+   mvpMatrix[11] = -(POINT_FAR + POINT_NEAR)/(POINT_FAR - POINT_NEAR);
+   mvpMatrix[15] = 1.0f;
 }
 
 
@@ -245,7 +246,7 @@ static void compile_program(void)
                                           "{\n"
                                           "   vec2 pos = position + (offset / 64.0) * scale * (colour / 255.0 + 0.5);\n"
                                           "   fragColour = colour * brightness / (127.0 * 255.0);\n" 
-                                          "   float tx = floor(packedTexCoords * 0.0625);\n" // RPI gets upset if we divide by 16 so multiply by 1/16 instead.
+                                          "   float tx = floor(packedTexCoords * 0.0625);\n" /* RPI gets upset if we divide by 16 so multiply by 1/16 instead. */
                                           "   float ty = packedTexCoords - tx * 16.0;\n"
                                           "   fragTexCoords = vec2(tx, ty) / 2.0;\n"
                                           "   gl_Position = vec4(pos, 0.0, 1.0) * mvpMatrix;\n"
@@ -293,7 +294,9 @@ static void compile_program(void)
    offsetAttribLocation = glGetAttribLocation(ProgramID, "offset");
    colourAttribLocation = glGetAttribLocation(ProgramID, "colour");
    packedTexCoordsAttribLocation = glGetAttribLocation(ProgramID, "packedTexCoords");
-//   MakeMVPMatrix(mvpMatrix, 0.0f, ALG_MAX_Y-1, ALG_MAX_X-1, 0.0f);
+#if 0
+   MakeMVPMatrix(mvpMatrix, 0.0f, ALG_MAX_Y-1, ALG_MAX_X-1, 0.0f);
+#endif
    MakeMVPMatrix(mvpMatrix, 0.0f-(SHIFTX*ALG_MAX_X), (ALG_MAX_Y-1)/SCALEY-(SHIFTY*ALG_MAX_Y), (ALG_MAX_X-1)/SCALEX-(SHIFTX*ALG_MAX_X), 0.0f-(SHIFTY*ALG_MAX_Y));
 }
 
@@ -304,7 +307,9 @@ static void context_reset(void)
    compile_program();
    CreateImage(DotWidth, DotHeight, DotImage, &DotTextureID);
    CreateImage(BloomWidth, BloomHeight, BloomImage, &BloomTextureID);
-//   setup_vao();
+#if 0
+   setup_vao();
+#endif
 #ifdef CORE
    context_alive = true;
 #endif
@@ -445,129 +450,128 @@ static void check_variables(void)
 #ifdef HAS_GPU   
    var.value = NULL;
    var.key = "vecx_use_hw";
-   
+
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-        if (!strcmp(var.value, "Hardware"))
-        {
-            if (!usingHWContext)
-            {
-                if (set_rendering_context(true))
-                    usingHWContext = true;
-            }
-        }
-        else
-        {
-            if (usingHWContext)
-            {
-                set_rendering_context(false);
-                usingHWContext = false;
-            }
-        }
+      if (!strcmp(var.value, "Hardware"))
+      {
+         if (!usingHWContext)
+         {
+            if (set_rendering_context(true))
+               usingHWContext = true;
+         }
+      }
+      else
+      {
+         if (usingHWContext)
+         {
+            set_rendering_context(false);
+            usingHWContext = false;
+         }
+      }
    }
    else
    {
-       usingHWContext = false;
+      usingHWContext = false;
    }
 
    if (usingHWContext)
    {
-        var.value = NULL;
-        var.key   = "vecx_res_hw";
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-        {
-            char *pch;
-            char str[100];
-            snprintf(str, sizeof(str), "%s", var.value);
-            
-            pch = strtok(str, "x");
-            if (pch)
-                WIDTH = strtoul(pch, NULL, 0);
-            pch = strtok(NULL, "x");
-            if (pch)
-                HEIGHT = strtoul(pch, NULL, 0);
+      var.value = NULL;
+      var.key   = "vecx_res_hw";
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         char *pch;
+         char str[100];
+         snprintf(str, sizeof(str), "%s", var.value);
 
-//            fprintf(stderr, "[libretro-test]: Got size: %u x %u.\n", WIDTH, HEIGHT);
-            usingHWContext = true;
-        }
-        else
-            usingHWContext = false;
+         pch = strtok(str, "x");
+         if (pch)
+            WIDTH = strtoul(pch, NULL, 0);
+         pch = strtok(NULL, "x");
+         if (pch)
+            HEIGHT = strtoul(pch, NULL, 0);
+
+         usingHWContext = true;
+      }
+      else
+         usingHWContext = false;
    }
-  
+
    if (usingHWContext)
    {
-        var.value = NULL;
-        var.key = "vecx_bloom_brightness";
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-        {
-            int value = atoi(var.value);
-            if (value < 0) 
-                value = 4;
-            maxAlpha = value * 0.05f;
-        }
+      var.value = NULL;
+      var.key = "vecx_bloom_brightness";
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         int value = atoi(var.value);
+         if (value < 0) 
+            value = 4;
+         maxAlpha = value * 0.05f;
+      }
 
-        var.value = NULL;
-        var.key = "vecx_line_brightness";
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-        {
-            int value = atoi(var.value);
-            if (value <= 0)
-                value = 4;
-            lineBrightness = value * 54.0f;
-        }
-        
-        var.value = NULL;
-        var.key = "vecx_line_width";
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-        {
-            int value = atoi(var.value);
-            if (value <= 0)
-                value = 4;
-            lineWidth = value * 18.75f;
-        }
-        
-        var.value = NULL;
-        var.key = "vecx_bloom_width";
-        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-        {
-            int value = atoi(var.value);
-            if (value <= 0)
-                value = 8;
-            bloomWidthMultiplier = value;
-        }
+      var.value = NULL;
+      var.key = "vecx_line_brightness";
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         int value = atoi(var.value);
+         if (value <= 0)
+            value = 4;
+         lineBrightness = value * 54.0f;
+      }
+
+      var.value = NULL;
+      var.key = "vecx_line_width";
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         int value = atoi(var.value);
+         if (value <= 0)
+            value = 4;
+         lineWidth = value * 18.75f;
+      }
+
+      var.value = NULL;
+      var.key = "vecx_bloom_width";
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         int value = atoi(var.value);
+         if (value <= 0)
+            value = 8;
+         bloomWidthMultiplier = value;
+      }
    }
    else
 #endif       
    {
-    var.value = NULL;
-    var.key   = "vecx_res_multi";
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "1"))
-            {
-                WIDTH = 330;
-                HEIGHT = 410;
-                point_size = 1;
-            }
-        else if (!strcmp(var.value, "2"))
-            {
-                WIDTH = 660;
-                HEIGHT = 820;
-                point_size = 2;
-            }
-        else if (!strcmp(var.value, "3"))
-            {
-                WIDTH = 990;
-                HEIGHT = 1230;
-                point_size = 2;
-            }
-        else if (!strcmp(var.value, "4"))
-            {
-                WIDTH = 1320;
-                HEIGHT = 1640;
-                point_size = 3;
-            }
-    }
+      var.value = NULL;
+      var.key   = "vecx_res_multi";
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         if (!strcmp(var.value, "1"))
+         {
+            WIDTH = 330;
+            HEIGHT = 410;
+            point_size = 1;
+         }
+         else if (!strcmp(var.value, "2"))
+         {
+            WIDTH = 660;
+            HEIGHT = 820;
+            point_size = 2;
+         }
+         else if (!strcmp(var.value, "3"))
+         {
+            WIDTH = 990;
+            HEIGHT = 1230;
+            point_size = 2;
+         }
+         else if (!strcmp(var.value, "4"))
+         {
+            WIDTH = 1320;
+            HEIGHT = 1640;
+            point_size = 3;
+         }
+      }
    }
 
    SCALEX = get_float_variable("vecx_scale_x", 1);
@@ -585,14 +589,13 @@ static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 
 void retro_init(void)
 {
+   unsigned level = 5; 
    struct retro_log_callback log;
    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
    else
       log_cb = fallback_log;
 
-    
-   unsigned level = 5; 
    environ_cb(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, &level);
 
    check_variables();
@@ -644,13 +647,11 @@ bool retro_load_game(const struct retro_game_info *info)
       return false;
 #ifdef HAS_GPU
     if (usingHWContext)
-    {
         usingHWContext = set_rendering_context(true);
-    }
     else
         usingHWContext = !set_rendering_context(false);
 
-// Hide options that don't apply to current renderer.    
+    /* Hide options that don't apply to current renderer. */
     if (usingHWContext)
     {
         struct retro_core_option_display option_display;
@@ -810,37 +811,31 @@ static inline uint32_t MakeAll(float dx, float dy, int8_t col, uint8_t tc)
     return (((int8_t)(dx*64.0f+0.5f)) & 0xff) | (((int8_t)(dy*64.0f+0.5f) & 0xff) << 8) | ((col << 16)&0xff0000) | (tc << 24);
 }
 
-static inline float Dot2D(POINT a, POINT b)
+static inline float Dot2D(VECX_POINT a, VECX_POINT b)
 {
     return a.x * b.x + a.y * b.y;
 }
 
-static inline POINT IntersectionPoint(POINT a, POINT b, POINT c, POINT d)
+static void IntersectionPoint(VECX_POINT *res, VECX_POINT a, VECX_POINT b, VECX_POINT c, VECX_POINT d)
 {
-    POINT res;
+   float a1          = b.y - a.y;
+   float b1          = a.x - b.x;
+   float c1          = a1 * a.x + b1 * a.y;
+   float a2          = d.y - c.y;
+   float b2          = c.x - d.x;
+   float c2          = a2 * c.x + b2 * c.y;
+   float determinant = a1 * b2 - a2 * b1;
 
-    float a1 = b.y - a.y;
-    float b1 = a.x - b.x;
-    float c1 = a1 * a.x + b1 * a.y;
-
-    float a2 = d.y - c.y;
-    float b2 = c.x - d.x;
-    float c2 = a2 * c.x + b2 * c.y;
-
-    float determinant = a1 * b2 - a2 * b1;
-
-    if (determinant == 0.0f)
-    {
-        res.x = 0.0f;
-        res.y = 0.0f;
-    }
-    else
-    {
-        res.x = (b2 * c1 - b1 * c2) / determinant;
-        res.y = (a1 * c2 - a2 * c1) / determinant;
-    }
-
-    return res;
+   if (determinant == 0.0f)
+   {
+      res->x = 0.0f;
+      res->y = 0.0f;
+   }
+   else
+   {
+      res->x = (b2 * c1 - b1 * c2) / determinant;
+      res->y = (a1 * c2 - a2 * c1) / determinant;
+   }
 }
 #endif
 
@@ -879,56 +874,65 @@ void osint_render(void)
 #ifdef HAS_GPU    
     else
     {
-        GLint scissorTestEnabled = glIsEnabled(GL_SCISSOR_TEST);
-        GLint scissorBox[4];
-        glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
-        glBindFramebuffer(RARCH_GL_FRAMEBUFFER, hw_render.get_current_framebuffer());
+       int i;
+       GLint numVerts = 0;
+       int continuing = 0;
 
-/* The texture backing the framebuffer is square and a power-of-two, we only draw in the bottom left of it.
-   We use the scissor box so the glClearColor() only updates the part of the texture that we use rather than all the texture.
-   This saves memory bandwidth, which is very important on low memory bandwidth and/or tile based GPUs.
-*/
-        glScissor(0, 0, WIDTH, HEIGHT);
-        glEnable(GL_SCISSOR_TEST);
-        glViewport(0, 0, WIDTH, HEIGHT);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f-maxAlpha);
-        
-        glClear(GL_COLOR_BUFFER_BIT);
-        glEnable(GL_BLEND);
-        
-        glUseProgram(ProgramID);
-        glUniformMatrix4fv(mvpMatrixLocation, 1, GL_FALSE, mvpMatrix);
-        glVertexAttribPointer(positionAttribLocation, 2, GL_UNSIGNED_SHORT, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].pos));
-        glEnableVertexAttribArray(positionAttribLocation);
-        glVertexAttribPointer(offsetAttribLocation, 2, GL_BYTE, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].offsets));
-        glEnableVertexAttribArray(offsetAttribLocation);
-        glVertexAttribPointer(colourAttribLocation, 1, GL_BYTE, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].colour));
-        glEnableVertexAttribArray(colourAttribLocation);
-        glVertexAttribPointer(packedTexCoordsAttribLocation, 1, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].packedTexCoords));
-        glEnableVertexAttribArray(packedTexCoordsAttribLocation);
-        
-        GLint numVerts = 0;
-        int continuing = 0;
-        
-        int colour = 0;
+       int colour = 0;
 
-        float dx = 0.0f;
-        float dy = 0.0f;
-        
-        for (int i=0; i<vector_draw_cnt; i++)
-        {
-            colour = vectors_draw[i].color;
-            if (colour == 0 || colour > 127)
-                continue;
+       float dx = 0.0f;
+       float dy = 0.0f;
+       GLint scissorTestEnabled = glIsEnabled(GL_SCISSOR_TEST);
+       GLint scissorBox[4];
 
-            // Is this vector a point?
-            if (vectors_draw[i].x0 == vectors_draw[i].x1 && vectors_draw[i].y0 == vectors_draw[i].y1
-            // That isn't joining two lines.
-            && (vectors_draw[i].x0 != vectors_draw[i-1].x1 || vectors_draw[i].x1 != vectors_draw[i+1].x0 ||
-                vectors_draw[i].y0 != vectors_draw[i-1].y1 || vectors_draw[i].y1 != vectors_draw[i+1].y0))
-    //        if (vectors_draw[i].p0 == vectors_draw[i].p1
-    //            && (vectors_draw[i].p0 != vectors_draw[i-1].p1 || vectors_draw[i].p1 != vectors_draw[i+1].p0))
-            {
+       glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
+       glBindFramebuffer(RARCH_GL_FRAMEBUFFER, hw_render.get_current_framebuffer());
+
+       /* The texture backing the framebuffer is square and 
+        * a power-of-two, we only draw in the bottom left of it.
+        *
+        * We use the scissor box so the glClearColor() only 
+        * updates the part of the texture that we use rather than 
+        * all the texture.
+        *
+        * This saves memory bandwidth, which is very important on 
+        * low memory bandwidth and/or tile based GPUs.
+        */
+       glScissor(0, 0, WIDTH, HEIGHT);
+       glEnable(GL_SCISSOR_TEST);
+       glViewport(0, 0, WIDTH, HEIGHT);
+       glClearColor(0.0f, 0.0f, 0.0f, 1.0f-maxAlpha);
+
+       glClear(GL_COLOR_BUFFER_BIT);
+       glEnable(GL_BLEND);
+
+       glUseProgram(ProgramID);
+       glUniformMatrix4fv(mvpMatrixLocation, 1, GL_FALSE, mvpMatrix);
+       glVertexAttribPointer(positionAttribLocation, 2, GL_UNSIGNED_SHORT, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].pos));
+       glEnableVertexAttribArray(positionAttribLocation);
+       glVertexAttribPointer(offsetAttribLocation, 2, GL_BYTE, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].offsets));
+       glEnableVertexAttribArray(offsetAttribLocation);
+       glVertexAttribPointer(colourAttribLocation, 1, GL_BYTE, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].colour));
+       glEnableVertexAttribArray(colourAttribLocation);
+       glVertexAttribPointer(packedTexCoordsAttribLocation, 1, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(GLVERTEX), &(verticies[0].packedTexCoords));
+       glEnableVertexAttribArray(packedTexCoordsAttribLocation);
+
+       for (i = 0; i < vector_draw_cnt; i++)
+       {
+          colour = vectors_draw[i].color;
+          if (colour == 0 || colour > 127)
+             continue;
+
+          /* Is this vector a point? */
+          if (vectors_draw[i].x0 == vectors_draw[i].x1 && vectors_draw[i].y0 == vectors_draw[i].y1
+                /* That isn't joining two lines. */
+                && (vectors_draw[i].x0 != vectors_draw[i-1].x1 || vectors_draw[i].x1 != vectors_draw[i+1].x0 ||
+                   vectors_draw[i].y0 != vectors_draw[i-1].y1 || vectors_draw[i].y1 != vectors_draw[i+1].y0))
+#if 0
+             if (vectors_draw[i].p0 == vectors_draw[i].p1
+                   && (vectors_draw[i].p0 != vectors_draw[i-1].p1 || vectors_draw[i].p1 != vectors_draw[i+1].p0))
+#endif
+             {
                 verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
                 verticies[numVerts].rest = MakeAll(-dotScale, dotScale, colour, 0x02);
                 numVerts++;
@@ -948,187 +952,192 @@ void osint_render(void)
 
                 continuing = 0;
 
-                continue;               // Loop round to the next vector.
-            }
-            
-            // Draw end cap if we are not continuing the line
-            if (!continuing)
-            {
-                dx = vectors_draw[i].x1 - vectors_draw[i].x0;
-                dy = vectors_draw[i].y1 - vectors_draw[i].y0; 
-                float length = sqrt(dx*dx+dy*dy);
-                dx /= length;
-                dy /= length;
-                
-                verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-                verticies[numVerts].rest = MakeAll((-dy-dx), (dx-dy), colour, 0x20);
-                numVerts++;
-                verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-                verticies[numVerts].rest = MakeAll((dy-dx), (-dx-dy), colour, 0x22);
-                numVerts++;
-                verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-                verticies[numVerts].rest = MakeAll(-dy, dx, colour, 0x10);
-                numVerts++;
-                verticies[numVerts] = verticies[numVerts-2];
-                numVerts++;
-                verticies[numVerts] = verticies[numVerts-2];
-                numVerts++;
-                verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
-                verticies[numVerts].rest = MakeAll(dy, -dx, colour, 0x12);
-                numVerts++;
-            }
-            
-            float nextDx = dx;
-            float nextDy = dy;
-        
-            // Are we contiguous with the next vector?
-            if (i < vector_draw_cnt-1 &&                                                                        // We are not the last vector...
-    //            (vectors_draw[i].p1 == vectors_draw[i+1].p0) &&
-    //            (vectors_draw[i+1].p0 != vectors_draw[i+1].p1))
-                (vectors_draw[i].x1 == vectors_draw[i+1].x0 && vectors_draw[i].y1 == vectors_draw[i+1].y0) &&   // ...are connected to next vector...
-                (vectors_draw[i+1].x0 != vectors_draw[i+1].x1 || vectors_draw[i+1].y0 != vectors_draw[i+1].y1)) // ...and the next vector isn't a point.
-            {
-                float localNextDx = vectors_draw[i+1].x1 - vectors_draw[i+1].x0;
-                float localNextDy = vectors_draw[i+1].y1 - vectors_draw[i+1].y0; 
-                float length = sqrt(localNextDx*localNextDx+localNextDy*localNextDy);
-                localNextDx /= length;
-                localNextDy /= length;
-                
-                POINT thisVec = {dx, dy};
-                POINT nextVec = {localNextDx, localNextDy};
-                
-                float dot = Dot2D(thisVec, nextVec);
+                continue;               /* Loop round to the next vector. */
+             }
 
-                if (dot > 0.99f)   // If (nearly) parallel.
+          /* Draw end cap if we are not continuing the line */
+          if (!continuing)
+          {
+             dx = vectors_draw[i].x1 - vectors_draw[i].x0;
+             dy = vectors_draw[i].y1 - vectors_draw[i].y0; 
+             float length = sqrt(dx*dx+dy*dy);
+             dx /= length;
+             dy /= length;
+
+             verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
+             verticies[numVerts].rest = MakeAll((-dy-dx), (dx-dy), colour, 0x20);
+             numVerts++;
+             verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
+             verticies[numVerts].rest = MakeAll((dy-dx), (-dx-dy), colour, 0x22);
+             numVerts++;
+             verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
+             verticies[numVerts].rest = MakeAll(-dy, dx, colour, 0x10);
+             numVerts++;
+             verticies[numVerts] = verticies[numVerts-2];
+             numVerts++;
+             verticies[numVerts] = verticies[numVerts-2];
+             numVerts++;
+             verticies[numVerts].pos = vectors_draw[i].x0 | vectors_draw[i].y0 << 16;
+             verticies[numVerts].rest = MakeAll(dy, -dx, colour, 0x12);
+             numVerts++;
+          }
+
+          float nextDx = dx;
+          float nextDy = dy;
+
+          /* Are we contiguous with the next vector? */
+          if (i < vector_draw_cnt-1 &&                                                                        /* We are not the last vector... */
+#if 0
+                (vectors_draw[i].p1 == vectors_draw[i+1].p0) &&
+                (vectors_draw[i+1].p0 != vectors_draw[i+1].p1))
+#endif
+             (vectors_draw[i].x1 == vectors_draw[i+1].x0 && vectors_draw[i].y1 == vectors_draw[i+1].y0) &&   /* ...are connected to next vector... */
+                (vectors_draw[i+1].x0 != vectors_draw[i+1].x1 || vectors_draw[i+1].y0 != vectors_draw[i+1].y1)) /* ...and the next vector isn't a point. */
                 {
-                    vectors_draw[i].x1 = (vectors_draw[i].x1 + vectors_draw[i+1].x0) / 2;
-                    vectors_draw[i].y1 = (vectors_draw[i].y1 + vectors_draw[i+1].y0) / 2;
-                    nextDx = (dx + localNextDx) / 2.0f;
-                    nextDy = (dy + localNextDy) / 2.0f;
-                    
-                    continuing = 1;
-                    dx = localNextDx;
-                    dy = localNextDy;
+                   float dot;
+                   VECX_POINT this_vec, next_vec;
+                   float localNextDx = vectors_draw[i+1].x1 - vectors_draw[i+1].x0;
+                   float localNextDy = vectors_draw[i+1].y1 - vectors_draw[i+1].y0; 
+                   float length      = sqrt(localNextDx*localNextDx+localNextDy*localNextDy);
+                   localNextDx      /= length;
+                   localNextDy      /= length;
+
+                   this_vec.x   = dx;
+                   this_vec.y   = dy;
+                   next_vec.x   = localNextDx;
+                   next_vec.y   = localNextDy;
+                   dot          = Dot2D(this_vec, next_vec);
+
+                   if (dot > 0.99f)   /* If (nearly) parallel. */
+                   {
+                      vectors_draw[i].x1 = (vectors_draw[i].x1 + vectors_draw[i+1].x0) / 2;
+                      vectors_draw[i].y1 = (vectors_draw[i].y1 + vectors_draw[i+1].y0) / 2;
+                      nextDx = (dx + localNextDx) / 2.0f;
+                      nextDy = (dy + localNextDy) / 2.0f;
+
+                      continuing = 1;
+                      dx = localNextDx;
+                      dy = localNextDy;
+                   }
+                   else if (dot >= 0.0f)   /* If change in angle is less than or equal to 90 degrees. */
+                   {
+                      VECX_POINT p0, p1;
+                      VECX_POINT a = {vectors_draw[i].x0-dy, vectors_draw[i].y0+dx};
+                      VECX_POINT b = {vectors_draw[i].x1-dy, vectors_draw[i].y1+dx};
+                      VECX_POINT c = {vectors_draw[i+1].x0-localNextDy, vectors_draw[i+1].y0+localNextDx};
+                      VECX_POINT d = {vectors_draw[i+1].x1-localNextDy, vectors_draw[i+1].y1+localNextDx};
+
+                      VECX_POINT a1 = {vectors_draw[i].x0+dy, vectors_draw[i].y0-dx};
+                      VECX_POINT b1 = {vectors_draw[i].x1+dy, vectors_draw[i].y1-dx};
+                      VECX_POINT c1 = {vectors_draw[i+1].x0+localNextDy, vectors_draw[i+1].y0-localNextDx};
+                      VECX_POINT d1 = {vectors_draw[i+1].x1+localNextDy, vectors_draw[i+1].y1-localNextDx};
+
+                      IntersectionPoint(&p0, a, b, c, d);
+                      IntersectionPoint(&p1, a1, b1, c1, d1);
+
+                      vectors_draw[i].x1   = (p0.x + p1.x) / 2.0f;
+                      vectors_draw[i+1].x0 = vectors_draw[i].x1;
+                      vectors_draw[i].y1   = (p0.y + p1.y) / 2.0f;
+                      vectors_draw[i+1].y0 = vectors_draw[i].y1;
+                      nextDy               = ((p1.x - p0.x) / 2.0f);
+                      nextDx               = -((p1.y - p0.y) / 2.0f);
+
+                      continuing           = 1;
+                      dx                   = localNextDx;
+                      dy                   = localNextDy;
+                   }
+                   else    /* Angle between lines is too great - treat them as seperate lines. */
+                      continuing = 0;
                 }
-                else if (dot >= 0.0f)   // If change in angle is less than or equal to 90 degrees.
-                {
-                    POINT a = {vectors_draw[i].x0-dy, vectors_draw[i].y0+dx};
-                    POINT b = {vectors_draw[i].x1-dy, vectors_draw[i].y1+dx};
-                    POINT c = {vectors_draw[i+1].x0-localNextDy, vectors_draw[i+1].y0+localNextDx};
-                    POINT d = {vectors_draw[i+1].x1-localNextDy, vectors_draw[i+1].y1+localNextDx};
+          else
+             continuing = 0;
 
-                    POINT p0 = IntersectionPoint(a, b, c, d);
-                    
-                    POINT a1 = {vectors_draw[i].x0+dy, vectors_draw[i].y0-dx};
-                    POINT b1 = {vectors_draw[i].x1+dy, vectors_draw[i].y1-dx};
-                    POINT c1 = {vectors_draw[i+1].x0+localNextDy, vectors_draw[i+1].y0-localNextDx};
-                    POINT d1 = {vectors_draw[i+1].x1+localNextDy, vectors_draw[i+1].y1-localNextDx};
-                    
-                    POINT p1 = IntersectionPoint(a1, b1, c1, d1);
-                    
-                    vectors_draw[i].x1 = (p0.x + p1.x) / 2.0f;
-                    vectors_draw[i+1].x0 = vectors_draw[i].x1;
-                    vectors_draw[i].y1 = (p0.y + p1.y) / 2.0f;
-                    vectors_draw[i+1].y0 = vectors_draw[i].y1;
-                    nextDy = ((p1.x - p0.x) / 2.0f);
-                    nextDx = -((p1.y - p0.y) / 2.0f);
+          /* The previous two verticies are the first two we 
+           * need for the next line.
+           * This applies whether they were part of the 
+           * last line or the end cap of this line.
+           */
+          verticies[numVerts] = verticies[numVerts-2];
+          verticies[numVerts].colour = colour;
+          numVerts++;
+          verticies[numVerts] = verticies[numVerts-2];
+          verticies[numVerts].colour = colour;
+          numVerts++;
 
-                    continuing = 1;
-                    dx = localNextDx;
-                    dy = localNextDy;
-                }
-                else    // Angle between lines is too great - treat them as seperate lines.
-                {
-                    continuing = 0;
-                }
-                
-            }
-            else
-                continuing = 0;
-            
-            // The previous two verticies are the first two we need for the next line.
-            // This applies whether they were part of the last line or the end cap of this line.
-            verticies[numVerts] = verticies[numVerts-2];
-            verticies[numVerts].colour = colour;
-            numVerts++;
-            verticies[numVerts] = verticies[numVerts-2];
-            verticies[numVerts].colour = colour;
-            numVerts++;
-            
-            verticies[numVerts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-            verticies[numVerts].rest = MakeAll(-nextDy, nextDx, colour, 0x10);
-            numVerts++;
-            verticies[numVerts] = verticies[numVerts-2];
-            verticies[numVerts].colour = colour;
-            numVerts++;
-            verticies[numVerts] = verticies[numVerts-2];
-            verticies[numVerts].colour = colour;
-            numVerts++;
-            verticies[numVerts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-            verticies[numVerts].rest = MakeAll(nextDy, -nextDx, colour, 0x12);
-            numVerts++;
+          verticies[numVerts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
+          verticies[numVerts].rest = MakeAll(-nextDy, nextDx, colour, 0x10);
+          numVerts++;
+          verticies[numVerts] = verticies[numVerts-2];
+          verticies[numVerts].colour = colour;
+          numVerts++;
+          verticies[numVerts] = verticies[numVerts-2];
+          verticies[numVerts].colour = colour;
+          numVerts++;
+          verticies[numVerts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
+          verticies[numVerts].rest = MakeAll(nextDy, -nextDx, colour, 0x12);
+          numVerts++;
 
-            if (!continuing)
-            {
-                // And now the end cap.
-                verticies[numVerts] = verticies[numVerts-2];
-                verticies[numVerts].colour = colour;
-                numVerts++;
-                verticies[numVerts] = verticies[numVerts-2];
-                verticies[numVerts].colour = colour;
-                numVerts++;
-                verticies[numVerts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-                verticies[numVerts].rest = MakeAll((-nextDy+nextDx), (nextDx+nextDy), colour, 0x00);
-                numVerts++;
-                verticies[numVerts] = verticies[numVerts-2];
-                numVerts++;
-                verticies[numVerts] = verticies[numVerts-2];
-                numVerts++;
-                verticies[numVerts].pos = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
-                verticies[numVerts].rest = MakeAll((nextDy+nextDx), (-nextDx+nextDy), colour, 0x02);
-                numVerts++;
-            }
-        }
+          if (!continuing)
+          {
+             /* And now the end cap. */
+             verticies[numVerts]        = verticies[numVerts-2];
+             verticies[numVerts].colour = colour;
+             numVerts++;
+             verticies[numVerts]        = verticies[numVerts-2];
+             verticies[numVerts].colour = colour;
+             numVerts++;
+             verticies[numVerts].pos    = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
+             verticies[numVerts].rest   = MakeAll((-nextDy+nextDx), (nextDx+nextDy), colour, 0x00);
+             numVerts++;
+             verticies[numVerts]        = verticies[numVerts-2];
+             numVerts++;
+             verticies[numVerts]        = verticies[numVerts-2];
+             numVerts++;
+             verticies[numVerts].pos    = vectors_draw[i].x1 | vectors_draw[i].y1 << 16;
+             verticies[numVerts].rest   = MakeAll((nextDy+nextDx), (-nextDx+nextDy), colour, 0x02);
+             numVerts++;
+          }
+       }
 
-        // Draw the blooming lines if enabled.
-        if (maxAlpha > 0.0f)
-        {
-            glEnable(GL_TEXTURE_2D);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, BloomTextureID);
-            glUniform1i(textureLocation, 0);
-            glUniform1f(scaleLocation, lineWidth * bloomWidthMultiplier);
-            glUniform1f(brightnessLocation, bloomBrightness);
-            glBlendEquation(GL_FUNC_ADD);
-            glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
-            glDrawArrays(GL_TRIANGLES, 0, numVerts);
-        }
+       /* Draw the blooming lines if enabled. */
+       if (maxAlpha > 0.0f)
+       {
+          glEnable(GL_TEXTURE_2D);
+          glActiveTexture(GL_TEXTURE0);
+          glBindTexture(GL_TEXTURE_2D, BloomTextureID);
+          glUniform1i(textureLocation, 0);
+          glUniform1f(scaleLocation, lineWidth * bloomWidthMultiplier);
+          glUniform1f(brightnessLocation, bloomBrightness);
+          glBlendEquation(GL_FUNC_ADD);
+          glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+          glDrawArrays(GL_TRIANGLES, 0, numVerts);
+       }
 
-        // Draw the lines.
-        glEnable(GL_TEXTURE_2D);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, DotTextureID);
-        glUniform1i(textureLocation, 0);
-        glUniform1f(scaleLocation, lineWidth);
-        glUniform1f(brightnessLocation, lineBrightness);
-        glBlendFunc(GL_ONE, GL_ONE);
-        glDrawArrays(GL_TRIANGLES, 0, numVerts);
+       /* Draw the lines. */
+       glEnable(GL_TEXTURE_2D);
+       glActiveTexture(GL_TEXTURE0);
+       glBindTexture(GL_TEXTURE_2D, DotTextureID);
+       glUniform1i(textureLocation, 0);
+       glUniform1f(scaleLocation, lineWidth);
+       glUniform1f(brightnessLocation, lineBrightness);
+       glBlendFunc(GL_ONE, GL_ONE);
+       glDrawArrays(GL_TRIANGLES, 0, numVerts);
 
-        glDisableVertexAttribArray(positionAttribLocation);
-        glDisableVertexAttribArray(colourAttribLocation);
-        glDisableVertexAttribArray(offsetAttribLocation);
-        glDisableVertexAttribArray(packedTexCoordsAttribLocation);
-        
-        glUseProgram(0);
-        
-        /* Restore the old scissor box state. */
-        if (scissorTestEnabled == GL_FALSE)
-            glDisable(GL_SCISSOR_TEST);
-        glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
-        glDisable(GL_BLEND);
-        
-    	/* Start rendering ASAP by hinting to GL start get rendering now. */
-        glFlush();
+       glDisableVertexAttribArray(positionAttribLocation);
+       glDisableVertexAttribArray(colourAttribLocation);
+       glDisableVertexAttribArray(offsetAttribLocation);
+       glDisableVertexAttribArray(packedTexCoordsAttribLocation);
+
+       glUseProgram(0);
+
+       /* Restore the old scissor box state. */
+       if (scissorTestEnabled == GL_FALSE)
+          glDisable(GL_SCISSOR_TEST);
+       glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
+       glDisable(GL_BLEND);
+
+       /* Start rendering ASAP by hinting to GL start get rendering now. */
+       glFlush();
     }
 #endif    
 }
@@ -1139,110 +1148,109 @@ void osint_render(void)
 
 void retro_run(void)
 {
-	int i;
-	bool updated = false;
-	uint8_t buffer[882];
+   int i, ret;
+   bool updated = false;
+   uint8_t buffer[882];
 
-	/* poll input and update states;
-	   buttons (snd_regs[14], 4 buttons/pl => 4 bits starting from LSB, |= for rel. &= ~ for push)
-	   analog stick (alg_jch0, alg_jch1, => -1 (0x00) .. 0 (0x80) .. 1 (0xff)) */
-	poll_cb();
+   /* poll input and update states;
+      buttons (snd_regs[14], 4 buttons/pl => 4 bits starting from LSB, |= for rel. &= ~ for push)
+      analog stick (alg_jch0, alg_jch1, => -1 (0x00) .. 0 (0x80) .. 1 (0xff)) */
+   poll_cb();
 
-	/* Player 1 */
+   /* Player 1 */
 
-	
-	alg_jch0=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
-	alg_jch1=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
-	
-	if (alg_jch0 == 128) {
-	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
-		alg_jch0 = 0x00;
-	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
-		alg_jch0 = 0xff;
-	}
 
-	if (alg_jch1 == 128) {
-	if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
-		alg_jch1 = 0xff;
-	else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
-		alg_jch1 = 0x00;
-	}
+   alg_jch0=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
+   alg_jch1=input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
 
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
-		snd_regs[14] &= ~1;
-	else
-		snd_regs[14] |= 1;
+   if (alg_jch0 == 128) {
+      if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
+         alg_jch0 = 0x00;
+      else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+         alg_jch0 = 0xff;
+   }
 
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
-		snd_regs[14] &= ~2;
-	else
-		snd_regs[14] |= 2;
+   if (alg_jch1 == 128) {
+      if      (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
+         alg_jch1 = 0xff;
+      else if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
+         alg_jch1 = 0x00;
+   }
 
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
-		snd_regs[14] &= ~4;
-	else
-		snd_regs[14] |= 4;
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
+      snd_regs[14] &= ~1;
+   else
+      snd_regs[14] |= 1;
 
-	if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
-		snd_regs[14] &= ~8;
-	else
-		snd_regs[14] |= 8;
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
+      snd_regs[14] &= ~2;
+   else
+      snd_regs[14] |= 2;
 
-	/* Player 2 */
-	alg_jch2=input_state_cb(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
-	alg_jch3=input_state_cb(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
+      snd_regs[14] &= ~4;
+   else
+      snd_regs[14] |= 4;
 
-	if (alg_jch2 == 128 && alg_jch3 == 128) {
-		if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
-			alg_jch2 = 0x00;
-		else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
-			alg_jch2 = 0xff;
+   if (input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
+      snd_regs[14] &= ~8;
+   else
+      snd_regs[14] |= 8;
 
-		if      (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
-			alg_jch3 = 0xff;
-		else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
-			alg_jch3 = 0x00;
-	}
+   /* Player 2 */
+   alg_jch2=input_state_cb(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 256 + 128;
+   alg_jch3=input_state_cb(1, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 256 + 128;
 
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
-		snd_regs[14] &= ~16;
-	else
-		snd_regs[14] |= 16;
+   if (alg_jch2 == 128 && alg_jch3 == 128)
+   {
+      if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT ))
+         alg_jch2 = 0x00;
+      else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT))
+         alg_jch2 = 0xff;
 
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
-		snd_regs[14] &= ~32;
-	else
-		snd_regs[14] |= 32;
+      if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP   ))
+         alg_jch3 = 0xff;
+      else if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN ))
+         alg_jch3 = 0x00;
+   }
 
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
-		snd_regs[14] &= ~64;
-	else
-		snd_regs[14] |= 64;
+   if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A ))
+      snd_regs[14] &= ~16;
+   else
+      snd_regs[14] |= 16;
 
-	if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
-		snd_regs[14] &= ~128;
-	else
-		snd_regs[14] |= 128;
+   if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B ))
+      snd_regs[14] &= ~32;
+   else
+      snd_regs[14] |= 32;
 
-	int ret = vecx_emu(30000); /* 1500000 / 1000 * 20 */
+   if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X ))
+      snd_regs[14] &= ~64;
+   else
+      snd_regs[14] |= 64;
 
-	e8910_callback(NULL, buffer, 882);
+   if (input_state_cb(1, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y ))
+      snd_regs[14] &= ~128;
+   else
+      snd_regs[14] |= 128;
 
-	for (i = 0; i < 882; i++)
-	{
-		short convs = (buffer[i] << 8) - 0x7ff;
-		audio_cb(convs, convs);
-	}
+   ret = vecx_emu(30000); /* 1500000 / 1000 * 20 */
+
+   e8910_callback(NULL, buffer, 882);
+
+   for (i = 0; i < 882; i++)
+   {
+      short convs = (buffer[i] << 8) - 0x7ff;
+      audio_cb(convs, convs);
+   }
 
 #ifdef HAS_GPU	
-    if (usingHWContext)
-        video_cb(ret ? RETRO_HW_FRAME_BUFFER_VALID : NULL, WIDTH, HEIGHT, 0);
-    else
+   if (usingHWContext)
+      video_cb(ret ? RETRO_HW_FRAME_BUFFER_VALID : NULL, WIDTH, HEIGHT, 0);
+   else
 #endif        
-        video_cb(framebuffer, WIDTH, HEIGHT, WIDTH * sizeof(unsigned short));
-    
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-	{
-		check_variables();
-	}
+      video_cb(framebuffer, WIDTH, HEIGHT, WIDTH * sizeof(unsigned short));
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+      check_variables();
 }
