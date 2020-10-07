@@ -17,4 +17,5 @@ LOCAL_MODULE    := retro
 LOCAL_SRC_FILES := $(SOURCES_C)
 LOCAL_CFLAGS    := -std=gnu99 $(COREFLAGS)
 LOCAL_LDFLAGS   := -Wl,-version-script=$(CORE_DIR)/link.T
+LOCAL_LDLIBS    := -lGLESv2
 include $(BUILD_SHARED_LIBRARY)
