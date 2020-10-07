@@ -58,9 +58,10 @@ ifeq ($(platform), unix)
    TARGET := $(TARGET_NAME)_libretro.so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lGL
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 else ifeq ($(platform), linux-portable)
    TARGET := $(TARGET_NAME)_libretro.so
@@ -69,9 +70,10 @@ else ifeq ($(platform), linux-portable)
 else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
    fpic := -fPIC
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -framework OpenGL
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
    ifeq ($(arch),ppc)
       CFLAGS += -DMSB_FIRST -D__ppc__
@@ -104,10 +106,11 @@ else ifneq (,$(findstring ios,$(platform)))
    endif
    CFLAGS += -DIOS
    
-   ifeq ($(NOGPU),)
+	ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -framework OpenGLES
       CFLAGS += -DHAVE_OPENGLES
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 
    ifeq ($(platform),$(filter $(platform),ios9 ios-arm64))
@@ -123,9 +126,10 @@ else ifeq ($(platform), pi)
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
    CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/vmcs_host/linux
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       HAS_GPU = 1
       GLES := 1
+      HAVE_OPENGL = 1
    endif
    LIBS += -L/opt/vc/lib
 # tvOS
@@ -152,10 +156,11 @@ else ifeq ($(platform), qnx)
    TARGET := $(TARGET_NAME)_libretro_$(platform).so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lGLESv2
       GLES := 1
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 
    CC = qcc -Vgcc_ntoarmv7le
@@ -399,9 +404,10 @@ else ifeq ($(platform), windows_msvc2010_x86)
    TARGET := $(TARGET_NAME)_libretro.dll
    PSS_STYLE :=2
    LDFLAGS += -DLL
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lopengl32
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 
 # Windows MSVC 2005 x86
@@ -423,9 +429,10 @@ else ifeq ($(platform), windows_msvc2005_x86)
    PSS_STYLE :=2
    LDFLAGS += -DLL
    CFLAGS += -D_CRT_SECURE_NO_DEPRECATE
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lopengl32
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 
 # Windows MSVC 2003 x86
@@ -447,9 +454,10 @@ else ifeq ($(platform), windows_msvc2003_x86)
    PSS_STYLE :=2
    LDFLAGS += -DLL
    CFLAGS += -D_CRT_SECURE_NO_DEPRECATE
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lopengl32
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 
 # Windows MSVC 2017 all architectures
@@ -546,9 +554,10 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
    PSS_STYLE :=2
    LDFLAGS += -DLL
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lopengl32
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 
 # Windows
@@ -557,9 +566,10 @@ else
    CC ?= gcc
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/link.T
    CFLAGS += -D__WIN32__
-   ifeq ($(NOGPU),)
+   ifeq ($(HAVE_OPENGL),1)
       GL_LIB := -lopengl32
       HAS_GPU = 1
+      HAVE_OPENGL = 1
    endif
 endif
 
@@ -679,8 +689,15 @@ endif
 CFLAGS += $(INCFLAGS)
 
 ifneq ($(HAS_GPU),)
-   CFLAGS += -DHAS_GPU
    LIBM := -lm
+endif
+
+ifneq ($(HAS_GPU),)
+   CFLAGS += -DHAS_GPU
+endif
+
+ifeq ($(HAVE_OPENGL),1)
+   CFLAGS += -DHAVE_OPENGL
 endif
 
 ifeq ($(platform), theos_ios)

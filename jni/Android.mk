@@ -4,8 +4,9 @@ CORE_DIR := $(LOCAL_PATH)/..
 
 include $(CORE_DIR)/Makefile.common
 
-COREFLAGS := -ffast-math $(COREDEFINES) $(INCFLAGS)
-
+HAVE_OPENGL := 1
+GLES        := 1
+COREFLAGS   := -ffast-math $(COREDEFINES) $(INCFLAGS)
 GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")
   COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"

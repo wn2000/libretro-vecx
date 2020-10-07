@@ -4,7 +4,6 @@ INCFLAGS     := -I$(CORE_DIR) \
 
 COREDEFINES   = -D__LIBRETRO__ -DHAVE_STRINGS_H -DHAVE_STDINT_H -DHAVE_INTTYPES_H 
 
-
 ifneq (,$(findstring msvc2003,$(platform)))
    INCFLAGS += -I$(LIBRETRO_COMM_DIR)/include/compat/msvc
 endif
@@ -15,18 +14,21 @@ else
    COREDEFINES += -DINLINE=inline
 endif
 
-ifneq ($(HAS_GPU),)
-   ifeq ($(GLES), 1)
-      SOURCES_C += $(CORE_DIR)/glsym/glsym_es2.c
-   else
-      SOURCES_C += $(CORE_DIR)/glsym/glsym_gl.c
-   endif
+ifeq ($(HAVE_OPENGL), 1)
+   COREDEFINES += -DHAVE_OPENGL
 endif
 
 SOURCES_C  += $(CORE_DIR)/e6809.c \
               $(CORE_DIR)/e8910.c \
               $(CORE_DIR)/libretro.c \
               $(CORE_DIR)/vecx.c
-ifneq ($(HAS_GPU),)
+
+ifeq ($(HAVE_OPENGL), 1)
    SOURCES_C  += $(CORE_DIR)/glsym/rglgen.c
-endif              
+
+   ifeq ($(GLES), 1)
+      SOURCES_C += $(CORE_DIR)/glsym/glsym_es2.c
+   else
+      SOURCES_C += $(CORE_DIR)/glsym/glsym_gl.c
+   endif
+endif
