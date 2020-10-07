@@ -627,6 +627,8 @@ ifeq ($(HAS_GPU), 1)
       endif
       ifeq ($(platform), pi)
          LIBS += -lbrcmGLESv2 -lbcm_host -lpthread # Still link against GLESv2 when using GLES3 API, at least on desktop Linux.
+      else ifneq ($(GL_LIB),)
+         LIBS += $(GL_LIB)
       else
          LIBS += -lGLESv2 # Still link against GLESv2 when using GLES3 API, at least on desktop Linux.
       endif
