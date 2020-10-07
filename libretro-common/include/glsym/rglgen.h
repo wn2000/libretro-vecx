@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2015 The RetroArch team
+/* Copyright (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this libretro SDK code part (glsym).
@@ -27,7 +27,7 @@
 #include "config.h"
 #endif
 
-#include "retro_common_api.h"
+#include <retro_common_api.h>
 
 #include "rglgen_headers.h"
 
@@ -44,4 +44,3 @@ void rglgen_resolve_symbols_custom(rglgen_proc_address_t proc,
 RETRO_END_DECLS
 
 #endif
-
