@@ -69,9 +69,9 @@ static unsigned *rptr_xyus[4] = {
 	&reg_s
 };
 
-int e6809_statesz()
+int e6809_statesz(void)
 {
-	return 10 * sizeof(unsigned);
+   return 10 * sizeof(unsigned);
 }
 
 void e6809_serialize ( char* dst)

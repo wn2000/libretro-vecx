@@ -43,12 +43,12 @@ struct AY8910 {
 	unsigned VolTable[32];
 } PSG;
 
-int e8910_statesz()
+int e8910_statesz(void)
 {
 	return sizeof(unsigned) * (16 + 32 + 4) + sizeof(int) * 14 + 12;
 }
 
-void e8910_serialize ( char* dst )
+void e8910_serialize(char* dst)
 {
 	memcpy(dst, &PSG.VolTable, sizeof(PSG.VolTable)); dst += sizeof(PSG.VolTable);
 	memcpy(dst, snd_regs, sizeof(snd_regs)); dst += sizeof(snd_regs);
@@ -546,8 +546,7 @@ e8910_callback(void *userdata, uint8_t *stream, int length)
 }
 
 
-static void
-e8910_build_mixer_table()
+static void e8910_build_mixer_table(void)
 {
 	int i;
 	double out;
@@ -579,4 +578,3 @@ void e8910_init_sound(void)
 void e8910_done_sound(void)
 {
 }
-
