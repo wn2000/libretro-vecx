@@ -145,9 +145,6 @@ void e8910_write(int r, int v)
 {
     int old;
 
-    if (snd_regs == NULL)
-	    return;
-
     snd_regs[r] = v;
 
 	/* A note about the period of tones, noise and envelope: for speed reasons,*/
