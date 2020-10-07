@@ -1,11 +1,11 @@
 LOCAL_PATH := $(call my-dir)
 
 CORE_DIR := $(LOCAL_PATH)/..
+HAS_GPU := 1
+GLES    := 1
 
 include $(CORE_DIR)/Makefile.common
 
-HAS_GPU := 1
-GLES    := 1
 COREFLAGS   := -ffast-math $(COREDEFINES) $(INCFLAGS)
 GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")
