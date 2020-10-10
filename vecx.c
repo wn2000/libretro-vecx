@@ -2,31 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define Uint8 unsigned char
-
 #include "e6809.h"
 #include "vecx.h"
 #include "osint.h"
 #include "e8910.h"
 
 #define einline __inline
-
-unsigned char rom[8192];
-unsigned char cart[65536];
-unsigned char vecx_ram[1024];
-
-unsigned newbankswitchOffset = 0;
-unsigned bankswitchOffset = 0;
-char big = 0;
-unsigned char get_cart(unsigned pos) { return cart[(pos+bankswitchOffset)%65536]; }
-void set_cart(unsigned pos, unsigned char data) {
-	
-	if(pos == 32768 && data != 0) // 64k carts should have data at this offset
-	{
-		big = 1;
-	} 
-	cart[(pos)%65536] = data; 
-}
 
 #define BS_0 0
 #define BS_1 1
@@ -35,8 +16,34 @@ void set_cart(unsigned pos, unsigned char data) {
 #define BS_4 4
 #define BS_5 5
 
-unsigned bankswitchstate = BS_0;
+enum
+{
+   VECTREX_PDECAY	 = 30,      /* phosphor decay rate */
 
+   /* number of 6809 cycles before a frame redraw */
+
+   FCYCLES_INIT    = VECTREX_MHZ / VECTREX_PDECAY,
+
+   /* max number of possible vectors that maybe on the screen at one time.
+    * one only needs VECTREX_MHZ / VECTREX_PDECAY but we need to also store
+    * deleted vectors in a single table
+    */
+
+   VECTOR_CNT		 = VECTREX_MHZ / VECTREX_PDECAY,
+
+   VECTOR_HASH     = 65521
+};
+
+
+unsigned char rom[8192];
+unsigned char cart[65536];
+unsigned char vecx_ram[1024];
+
+unsigned newbankswitchOffset = 0;
+unsigned bankswitchOffset    = 0;
+char big                     = 0;
+
+unsigned bankswitchstate = BS_0;
 
 /* the via 6522 registers */
 
@@ -85,23 +92,6 @@ static long alg_dy;     /* delta y */
 static long alg_curr_x; /* current x position */
 static long alg_curr_y; /* current y position */
 
-enum {
-	VECTREX_PDECAY	= 30,      /* phosphor decay rate */
-
-	/* number of 6809 cycles before a frame redraw */
-
-	FCYCLES_INIT    = VECTREX_MHZ / VECTREX_PDECAY,
-
-	/* max number of possible vectors that maybe on the screen at one time.
-	 * one only needs VECTREX_MHZ / VECTREX_PDECAY but we need to also store
-	 * deleted vectors in a single table
-	 */
-
-	VECTOR_CNT		= VECTREX_MHZ / VECTREX_PDECAY,
-
-	VECTOR_HASH     = 65521
-};
-
 static unsigned alg_vectoring; /* are we drawing a vector right now? */
 static long alg_vector_x0;
 static long alg_vector_y0;
@@ -124,161 +114,173 @@ static long fcycles;
 static unsigned snd_select;
 unsigned snd_regs[16];
 
-int vecx_statesz()
+unsigned char get_cart(unsigned pos)
 {
-	return 1025 + (sizeof(unsigned) * 37) + (sizeof(long) * 12) +
-	e6809_statesz() + e8910_statesz();
+   return cart[ (pos + bankswitchOffset) % 65536];
+}
+
+void set_cart(unsigned pos, unsigned char data)
+{
+   if(pos == 32768 && data != 0) // 64k carts should have data at this offset
+      big = 1;
+   cart[(pos)%65536] = data; 
+}
+
+int vecx_statesz(void)
+{
+   return 1025 + (sizeof(unsigned) * 37) + (sizeof(long) * 12) +
+      e6809_statesz() + e8910_statesz();
 }
 
 /* hide all the ugly at the bottom.
  * usual bit of tedium, should really do htons as well,
  * along with the usual reinventing of C99 stdint */
-int vecx_serialize ( char* dst, int size )
+int vecx_serialize(char* dst, int size)
 {
-	if (size < vecx_statesz())
-		return 0;
+   if (size < vecx_statesz())
+      return 0;
 
-	e6809_serialize(dst);
+   e6809_serialize(dst);
    dst += e6809_statesz();
-	e8910_serialize(dst);
+   e8910_serialize(dst);
    dst += e8910_statesz();
-	
-	memcpy(dst, vecx_ram, 1024);
+
+   memcpy(dst, vecx_ram, 1024);
    dst += 1024;
 
-	memcpy(dst, &snd_select, sizeof(int));
+   memcpy(dst, &snd_select, sizeof(int));
    dst += sizeof(int); 
-	memcpy(dst, &via_ora,    sizeof(int));
+   memcpy(dst, &via_ora,    sizeof(int));
    dst += sizeof(int);
-	memcpy(dst, &via_orb,    sizeof(int));
+   memcpy(dst, &via_orb,    sizeof(int));
    dst += sizeof(int);
-	memcpy(dst, &via_ddra,   sizeof(int));
+   memcpy(dst, &via_ddra,   sizeof(int));
    dst += sizeof(int);
-	memcpy(dst, &via_ddrb,   sizeof(int));
+   memcpy(dst, &via_ddrb,   sizeof(int));
    dst += sizeof(int);
-	memcpy(dst, &via_t1on,   sizeof(int));
+   memcpy(dst, &via_t1on,   sizeof(int));
    dst += sizeof(int);
-	memcpy(dst, &via_t1int,  sizeof(int));
+   memcpy(dst, &via_t1int,  sizeof(int));
    dst += sizeof(int);
-	memcpy(dst, &via_t1c,    sizeof(int));
+   memcpy(dst, &via_t1c,    sizeof(int));
    dst += sizeof(int);
-	memcpy(dst, &via_t1ll,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_t1lh,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_t1pb7,  sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_t2on,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_t2int,  sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_t2c,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_t2ll,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_t2ll,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_sr,     sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_srb,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_src,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_srclk,  sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_acr,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_pcr,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_ifr,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_ier,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_ca2,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_cb2h,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &via_cb2s,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_rsh,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_rsh,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_xsh,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_ysh,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_zsh,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_jch0,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_jch1,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_jch2,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_jch3,   sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_jsh,    sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_compare, sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_vectoring, sizeof(int)); dst += sizeof(int);
-	memcpy(dst, &alg_curr_x,    sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &alg_curr_y,    sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &alg_vector_x0, sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &alg_vector_y0, sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &alg_vector_x1, sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &alg_vector_y1, sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &alg_vector_dx, sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &alg_vector_dy, sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &vector_draw_cnt, sizeof(long)); dst += sizeof(long);
-	memcpy(dst, &vector_erse_cnt, sizeof(long)); dst += sizeof(long);
-	*dst = alg_vector_color;
-	
-	return 1;
+   memcpy(dst, &via_t1ll,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_t1lh,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_t1pb7,  sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_t2on,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_t2int,  sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_t2c,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_t2ll,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_t2ll,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_sr,     sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_srb,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_src,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_srclk,  sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_acr,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_pcr,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_ifr,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_ier,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_ca2,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_cb2h,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &via_cb2s,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_rsh,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_rsh,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_xsh,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_ysh,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_zsh,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_jch0,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_jch1,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_jch2,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_jch3,   sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_jsh,    sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_compare, sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_vectoring, sizeof(int)); dst += sizeof(int);
+   memcpy(dst, &alg_curr_x,    sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &alg_curr_y,    sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &alg_vector_x0, sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &alg_vector_y0, sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &alg_vector_x1, sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &alg_vector_y1, sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &alg_vector_dx, sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &alg_vector_dy, sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &vector_draw_cnt, sizeof(long)); dst += sizeof(long);
+   memcpy(dst, &vector_erse_cnt, sizeof(long)); dst += sizeof(long);
+   *dst = alg_vector_color;
+
+   return 1;
 }
 
-int vecx_deserialize( char* dst, int size )
+int vecx_deserialize(char* dst, int size)
 {
-	if (size < vecx_statesz())
-		return 0;
+   if (size < vecx_statesz())
+      return 0;
 
-	e6809_deserialize(dst);
+   e6809_deserialize(dst);
    dst += e6809_statesz();
-	e8910_deserialize(dst);
+   e8910_deserialize(dst);
    dst += e8910_statesz();
 
-	memcpy(vecx_ram, dst, 1024);
+   memcpy(vecx_ram, dst, 1024);
    dst += 1024;
 
-	memcpy(&snd_select,dst,  sizeof(int));
+   memcpy(&snd_select,dst,  sizeof(int));
    dst += sizeof(int);
-	memcpy(&via_ora,   dst,  sizeof(int));
+   memcpy(&via_ora,   dst,  sizeof(int));
    dst += sizeof(int);
-	memcpy(&via_orb,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_ddra,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_ddrb,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t1on,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t1int, dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t1c,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t1ll,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t1lh,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t1pb7, dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t2on,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t2int, dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t2c,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t2ll,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_t2ll,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_sr,    dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_srb,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_src,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_srclk, dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_acr,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_pcr,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_ifr,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_ier,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_ca2,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_cb2h,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&via_cb2s,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_rsh,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_rsh,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_xsh,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_ysh,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_zsh,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_jch0,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_jch1,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_jch2,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_jch3,  dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_jsh,   dst,  sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_compare, dst,sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_vectoring, dst, sizeof(int)); dst += sizeof(int);
-	memcpy(&alg_curr_x, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&alg_curr_y, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&alg_vector_x0, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&alg_vector_y0, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&alg_vector_x1, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&alg_vector_y1, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&alg_vector_dx, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&alg_vector_dy, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&vector_draw_cnt, dst, sizeof(long)); dst += sizeof(long);
-	memcpy(&vector_erse_cnt, dst, sizeof(long)); dst += sizeof(long);
-	alg_vector_color = *dst;
-	
-	return 1;
+   memcpy(&via_orb,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_ddra,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_ddrb,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t1on,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t1int, dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t1c,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t1ll,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t1lh,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t1pb7, dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t2on,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t2int, dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t2c,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t2ll,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_t2ll,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_sr,    dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_srb,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_src,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_srclk, dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_acr,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_pcr,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_ifr,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_ier,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_ca2,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_cb2h,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&via_cb2s,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_rsh,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_rsh,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_xsh,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_ysh,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_zsh,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_jch0,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_jch1,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_jch2,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_jch3,  dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_jsh,   dst,  sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_compare, dst,sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_vectoring, dst, sizeof(int)); dst += sizeof(int);
+   memcpy(&alg_curr_x, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&alg_curr_y, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&alg_vector_x0, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&alg_vector_y0, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&alg_vector_x1, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&alg_vector_y1, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&alg_vector_dx, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&alg_vector_dy, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&vector_draw_cnt, dst, sizeof(long)); dst += sizeof(long);
+   memcpy(&vector_erse_cnt, dst, sizeof(long)); dst += sizeof(long);
+   alg_vector_color = *dst;
+
+   return 1;
 }
 
 /* update the snd chips internal registers when via_ora/via_orb changes */
-static einline void snd_update (void)
+static einline void snd_update(void)
 {
    switch (via_orb & 0x18)
    {
@@ -290,8 +292,8 @@ static einline void snd_update (void)
          break;
       case 0x10:
          /* the sound chip is recieving data */
-
-         if (snd_select != 14) {
+         if (snd_select != 14)
+         {
             snd_regs[snd_select] = via_ora;
             e8910_write(snd_select, via_ora);
          }
@@ -300,9 +302,8 @@ static einline void snd_update (void)
       case 0x18:
          /* the sound chip is latching an address */
 
-         if ((via_ora & 0xf0) == 0x00) {
+         if ((via_ora & 0xf0) == 0x00)
             snd_select = via_ora & 0x0f;
-         }
 
          break;
    }
