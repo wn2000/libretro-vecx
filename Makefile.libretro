@@ -4,35 +4,33 @@ HAS_GPU ?= 1
 
 ifeq ($(platform),)
    platform = unix
-   ifeq ($(shell uname -a),)
+   ifeq ($(shell uname -s),)
       platform = win
-   else ifneq ($(findstring pi,$(shell uname -a)),)
-      platform = pi
-   else ifneq ($(findstring MINGW,$(shell uname -a)),)
+   else ifneq ($(findstring MINGW,$(shell uname -s)),)
       platform = win
-   else ifneq ($(findstring Darwin,$(shell uname -a)),)
+   else ifneq ($(findstring Darwin,$(shell uname -s)),)
       platform = osx
       arch = intel
       ifeq ($(shell uname -p),powerpc)
          arch = ppc
       endif
-   else ifneq ($(findstring win,$(shell uname -a)),)
+   else ifneq ($(findstring win,$(shell uname -s)),)
       platform = win
    endif
 endif
 
 # system platform
 system_platform = unix
-ifeq ($(shell uname -a),)
+ifeq ($(shell uname -s),)
    EXE_EXT = .exe
    system_platform = win
-else ifneq ($(findstring Darwin,$(shell uname -a)),)
+else ifneq ($(findstring Darwin,$(shell uname -s)),)
    system_platform = osx
    arch = intel
    ifeq ($(shell uname -p),powerpc)
       arch = ppc
    endif
-else ifneq ($(findstring MINGW,$(shell uname -a)),)
+else ifneq ($(findstring MINGW,$(shell uname -s)),)
    system_platform = win
 endif
 
@@ -60,7 +58,12 @@ ifeq ($(platform), unix)
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T
    ifeq ($(HAS_GPU), 1)
-      GL_LIB := -lGL
+      ifeq ($(HAS_GLES), 1)
+         GL_LIB := -lGLESv2
+         GLES :=1
+      else
+         GL_LIB := -lGL
+      endif
    endif
 else ifeq ($(platform), linux-portable)
    TARGET := $(TARGET_NAME)_libretro.so
@@ -107,7 +110,7 @@ else ifneq (,$(findstring ios,$(platform)))
       CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
    endif
    CFLAGS += -DIOS
-   
+
    ifeq ($(HAS_GPU), 1)
       GL_LIB := -framework OpenGLES
       CFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES2
@@ -121,16 +124,21 @@ else ifneq (,$(findstring ios,$(platform)))
       CFLAGS += -miphoneos-version-min=5.0
    endif
 # Raspberry Pi
-else ifeq ($(platform), pi)
+else ifneq (,$(findstring rpi,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
-   CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/vmcs_host/linux
    ifeq ($(HAS_GPU), 1)
       GLES := 1
+      # RPI 4 has no support for the legacy Broadcom GLES drivers, it uses MESA drivers
+      ifneq (,$(findstring mesa,$(platform)))
+         GL_LIB := -lGLESv2
+      else
+         CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/vmcs_host/linux
+         LIBS   += -L/opt/vc/lib
+         GL_LIB := -lbrcmGLESv2 -lbcm_host -lpthread
+      endif
    endif
-   LIBS += -L/opt/vc/lib
-# tvOS
 else ifeq ($(platform), tvos-arm64)
    TARGET := $(TARGET_NAME)_libretro_tvos.dylib
    fpic := -fPIC
@@ -267,13 +275,13 @@ else ifeq ($(platform), libnx)
    CXXFLAGS := $(ASFLAGS) $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
    CFLAGS += -std=gnu11
    STATIC_LINKING = 1
-   
+
 # Classic Platforms ####################
 # Platform affix = classic_<ISA>_<µARCH>
 # Help at https://modmyclassic.com/comp
-   
-# (armv7 a7, hard point, neon based) ### 
-# NESC, SNESC, C64 mini 
+
+# (armv7 a7, hard point, neon based) ###
+# NESC, SNESC, C64 mini
 else ifeq ($(platform), classic_armv7_a7)
    TARGET := $(TARGET_NAME)_libretro.so
    fpic := -fPIC
@@ -626,9 +634,7 @@ ifeq ($(HAS_GPU), 1)
       else ifeq ($(GLES3), 1)
          CFLAGS += -DHAVE_OPENGLES3
       endif
-      ifeq ($(platform), pi)
-         LIBS += -lbrcmGLESv2 -lbcm_host -lpthread # Still link against GLESv2 when using GLES3 API, at least on desktop Linux.
-      else ifneq ($(GL_LIB),)
+      ifneq ($(GL_LIB),)
          LIBS += $(GL_LIB)
       else
          LIBS += -lGLESv2 # Still link against GLESv2 when using GLES3 API, at least on desktop Linux.
@@ -638,7 +644,7 @@ ifeq ($(HAS_GPU), 1)
       OBJECTS += glsym/glsym_gl.o
       LIBS += $(GL_LIB)
    endif
-   
+
    ifeq ($(CORE), 1)
       CFLAGS += -DCORE
    endif
@@ -691,7 +697,7 @@ ifneq (,$(findstring msvc,$(platform)))
    endif
 else
    OBJOUT   = -o
-   LINKOUT  = -o 
+   LINKOUT  = -o
    LD = $(CC)
 endif
 
@@ -715,7 +721,7 @@ ifeq ($(STATIC_LINKING), 1)
 else
 	$(LD) $(LINKOUT)$@ $(fpic) $(SHARED) $(OBJECTS) $(LDFLAGS) $(LIBS)
 endif
-	
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $(OBJOUT)$@ $<
 
