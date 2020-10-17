@@ -341,7 +341,7 @@ static void context_destroy(void)
    }
 }
 
-#ifdef GLES  
+#ifdef HAVE_OPENGLES
 static bool retro_init_hw_context(bool useHardwareContext)
 {
    if (useHardwareContext)
