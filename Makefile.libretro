@@ -83,12 +83,14 @@ else ifeq ($(platform), osx)
    endif
    OSXVER = `sw_vers -productVersion | cut -d. -f 2`
    OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
-   fpic += -mmacosx-version-min=10.1
+   OSX_GT_MOJAVE = $(shell (( $(OSXVER) >= 14)) && echo "YES")
+   ifneq ($(OSX_GT_MOJAVE),YES)
+	#this breaks compiling on Mac OS Mojave
+      fpic += -mmacosx-version-min=10.1
+   endif
    SHARED := -dynamiclib
    ifeq ($(arch),ppc)
       ARCHFLAGS = -arch ppc -arch ppc64
-   else
-      ARCHFLAGS = -arch i386 -arch x86_64
    endif
    HAS_GPU=0
 # iOS
