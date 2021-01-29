@@ -27,6 +27,9 @@ ifeq ($(shell uname -s),)
 else ifneq ($(findstring Darwin,$(shell uname -s)),)
    system_platform = osx
    arch = intel
+   ifeq ($(shell uname -p),arm)
+      arch = arm
+   endif
    ifeq ($(shell uname -p),powerpc)
       arch = ppc
    endif
@@ -84,14 +87,22 @@ else ifeq ($(platform), osx)
    OSXVER = `sw_vers -productVersion | cut -d. -f 2`
    OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
    OSX_GT_MOJAVE = $(shell (( $(OSXVER) >= 14)) && echo "YES")
-   ifneq ($(OSX_GT_MOJAVE),YES)
-	#this breaks compiling on Mac OS Mojave
+   ifeq ($(OSX_LT_MAVERICKS),YES)
       fpic += -mmacosx-version-min=10.1
    endif
    SHARED := -dynamiclib
+   ifeq ($(UNIVERSAL),1)
    ifeq ($(arch),ppc)
       ARCHFLAGS = -arch ppc -arch ppc64
    endif
+   endif
+
+   ifeq ($(CROSS_COMPILE),1)
+		TARGET_RULE   = -target $(LIBRETRO_APPLE_PLATFORM) -isysroot $(LIBRETRO_APPLE_ISYSROOT)
+		CFLAGS   += $(TARGET_RULE)
+		LDFLAGS  += $(TARGET_RULE)
+   endif
+
    HAS_GPU=0
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
@@ -658,7 +669,7 @@ else ifneq (,$(findstring msvc,$(platform)))
    CODE_DEFINES =
 else
    WARNINGS_DEFINES = -Wall -W -Wno-unused-parameter -Wno-sign-compare -Wno-uninitialized
-   CODE_DEFINES = -fomit-frame-pointer
+   CODE_DEFINES = 
 endif
 
 COMMON_DEFINES += $(CODE_DEFINES) $(WARNINGS_DEFINES) $(fpic)

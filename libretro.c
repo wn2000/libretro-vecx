@@ -189,6 +189,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 }
 
 
+#ifdef HAS_GPU
 #define POINT_NEAR (-1.0f)
 #define POINT_FAR  (1.0f)
 
@@ -209,8 +210,6 @@ static void make_mvp_matrix(float mvp_mat[16],
    mvp_mat[15]   = 1.0f;
 }
 
-
-#ifdef HAS_GPU
 static void create_gl_image(
       uint32_t width, uint32_t height, const uint8_t *data, GLuint *textureId)
 {
