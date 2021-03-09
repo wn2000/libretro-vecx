@@ -80,10 +80,6 @@ include:
   - project: 'libretro-infrastructure/ci-templates'
     file: '/libnx-static.yml'
 
-  # tvOS (AppleTV)
-  - project: 'libretro-infrastructure/ci-templates'
-    file: '/tvos-arm64.yml'
-
   #################################### MISC ##################################
   # Emscripten
   - project: 'libretro-infrastructure/ci-templates'
@@ -190,12 +186,6 @@ libretro-build-ios-arm64:
 libretro-build-ios9:
   extends:
     - .libretro-ios9-make-default
-    - .core-defs
-    
-# tvOS
-libretro-build-tvos-arm64:
-  extends:
-    - .libretro-tvos-arm64-make-default
     - .core-defs
 
 ################################### CONSOLES #################################
