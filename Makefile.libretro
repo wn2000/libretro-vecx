@@ -109,6 +109,7 @@ else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
+   MINVERSION :=
 
    ifeq ($(IOSSDK),)
       IOSSDK := $(shell xcodebuild -version -sdk iphoneos Path)
@@ -130,12 +131,11 @@ else ifneq (,$(findstring ios,$(platform)))
    endif
 
    ifeq ($(platform),$(filter $(platform),ios9 ios-arm64))
-      CC     += -miphoneos-version-min=8.0
-      CFLAGS += -miphoneos-version-min=8.0
+      MINVERSION = -miphoneos-version-min=8.0
    else
-      CC     += -miphoneos-version-min=5.0
-      CFLAGS += -miphoneos-version-min=5.0
+      MINVERSION = -miphoneos-version-min=5.0
    endif
+      CFLAGS += $(MINVERSION)
 # Raspberry Pi
 else ifneq (,$(findstring rpi,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
@@ -157,11 +157,20 @@ else ifeq ($(platform), tvos-arm64)
    fpic := -fPIC
    SHARED := -dynamiclib
 
-   GLES := 1
    ifeq ($(IOSSDK),)
       IOSSDK := $(shell xcodebuild -version -sdk appletvos Path)
    endif
+
+   ifeq ($(HAS_GPU), 1)
+      GL_LIB := -framework OpenGLES
+      CFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES2
+   endif
+
+   GLES := 1
    CFLAGS += -DIOS
+
+   CC = cc -arch arm64 -isysroot $(IOSSDK)
+   CXX = clang++ -arch arm64 -isysroot $(IOSSDK)
 
 # Theos iOS
 else ifeq ($(platform), theos_ios)
