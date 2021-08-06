@@ -376,6 +376,27 @@ else ifeq ($(platform), gcw0)
    CFLAGS += $(PTHREAD_FLAGS) -DHAVE_MKDIR
    CFLAGS += -ffast-math -march=mips32 -mtune=mips32r2 -mhard-float
 
+# RETROFW (needs retrofw 2.3 dev version or above) - crashes on 2.2 or under likely
+else ifeq ($(platform), retrofw)
+   TARGET := $(TARGET_NAME)_libretro.so
+   HAS_GPU=0
+   CC = /opt/retrofw-toolchain/usr/bin/mipsel-linux-gcc
+   CXX = /opt/retrofw-toolchain/usr/bin/mipsel-linux-g++
+   AR = /opt/retrofw-toolchain/usr/bin/mipsel-linux-ar
+   fpic := -fPIC
+   SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(CORE_DIR)/link.T
+   LDFLAGS += $(PTHREAD_FLAGS) -flto -mplt 
+   CFLAGS += $(PTHREAD_FLAGS) -DHAVE_MKDIR
+   CFLAGS += -Ofast
+   CFLAGS += -DRETROFW
+   CFLAGS += -march=mips32 -mtune=mips32 -mhard-float
+   CFLAGS += -falign-functions=1 -falign-jumps=1 -falign-loops=1
+   CFLAGS += -fomit-frame-pointer -ffast-math -fmerge-all-constants -flto
+   CFLAGS += -funsafe-math-optimizations -fsingle-precision-constant -fexpensive-optimizations
+   CFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops
+   CFLAGS += -fmerge-all-constants -fno-math-errno -fno-stack-protector -fno-ident    
+   CFLAGS += -DRETROFW
+   
 # Windows MSVC 2003 Xbox 1
 else ifeq ($(platform), xbox1_msvc2003)
    TARGET := $(TARGET_NAME)_libretro_xdk1.lib
@@ -761,4 +782,3 @@ clean:
 
 .PHONY: clean
 endif
-
