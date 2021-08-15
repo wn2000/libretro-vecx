@@ -175,8 +175,8 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    memset(info, 0, sizeof(*info));
    info->timing.fps            = 50.0;
    info->timing.sample_rate    = 44100;
-   info->geometry.base_width   = WIDTH;
-   info->geometry.base_height  = HEIGHT;
+   info->geometry.base_width   = 330;
+   info->geometry.base_height  = 410;
 #if defined(_3DS) || defined(RETROFW)
    info->geometry.max_width    = 330;
    info->geometry.max_height   = 410;
