@@ -396,7 +396,28 @@ else ifeq ($(platform), retrofw)
    CFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops
    CFLAGS += -fmerge-all-constants -fno-math-errno -fno-stack-protector -fno-ident    
    CFLAGS += -DRETROFW
-   
+
+# MIYOO
+else ifeq ($(platform), miyoo)
+   TARGET := $(TARGET_NAME)_libretro.so
+   HAS_GPU=0
+   CC = /opt/miyoo/usr/bin/arm-linux-gcc
+   CXX = /opt/miyoo/usr/bin/arm-linux-g++
+   AR = /opt/miyoo/usr/bin/arm-linux-ar
+   fpic := -fPIC
+   SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(CORE_DIR)/link.T
+   LDFLAGS += $(PTHREAD_FLAGS) -flto -fplt 
+   CFLAGS += $(PTHREAD_FLAGS) -DHAVE_MKDIR
+   CFLAGS += -Ofast
+   CFLAGS += -DRETROFW
+   CFLAGS += -march=armv5te -mtune=arm926ej-s
+   CFLAGS += -falign-functions=1 -falign-jumps=1 -falign-loops=1
+   CFLAGS += -fomit-frame-pointer -ffast-math -fmerge-all-constants -flto
+   CFLAGS += -funsafe-math-optimizations -fsingle-precision-constant -fexpensive-optimizations
+   CFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-unroll-loops
+   CFLAGS += -fmerge-all-constants -fno-math-errno -fno-stack-protector -fno-ident    
+   CFLAGS += -DRETROFW
+
 # Windows MSVC 2003 Xbox 1
 else ifeq ($(platform), xbox1_msvc2003)
    TARGET := $(TARGET_NAME)_libretro_xdk1.lib
