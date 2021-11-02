@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -378,10 +377,10 @@ static einline void int_update (void)
 
 unsigned char read8 (unsigned address)
 {
-	unsigned char data = 0;
+   unsigned char data = 0;
 
    /* rom */
-	if ((address & 0xe000) == 0xe000)
+   if ((address & 0xe000) == 0xe000)
       data = rom[address & 0x1fff];
    else if ((address & 0xe000) == 0xc000)
    {
@@ -499,11 +498,11 @@ unsigned char read8 (unsigned address)
       }
    }
    else if (address < 0x8000) /* cartridge */
-		data = get_cart(address);
-	else
-		data = 0xff;
+      data = get_cart(address);
+   else
+      data = 0xff;
 
-	return data;
+   return data;
 }
 
 void write8 (unsigned address, unsigned char data)
