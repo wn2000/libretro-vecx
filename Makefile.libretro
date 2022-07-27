@@ -337,13 +337,21 @@ else ifneq (,$(findstring armv,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    SHARED := -shared -Wl,--no-undefined
    fpic := -fPIC
-   CC = gcc
+   CC ?= gcc
    ifneq (,$(findstring cortexa8,$(platform)))
       CFLAGS += -marm -mcpu=cortex-a8
       ASFLAGS += -mcpu=cortex-a8
    else ifneq (,$(findstring cortexa9,$(platform)))
       CFLAGS += -marm -mcpu=cortex-a9
       ASFLAGS += -mcpu=cortex-a9
+   endif
+   ifeq ($(HAS_GPU), 1)
+      ifeq ($(HAS_GLES), 1)
+         GL_LIB := -lGLESv2
+         GLES :=1
+      else
+         GL_LIB := -lGL
+      endif
    endif
    CFLAGS += -marm
    ifneq (,$(findstring neon,$(platform)))
