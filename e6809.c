@@ -108,10 +108,7 @@ void (*e6809_write8) (unsigned address, unsigned char data);
 
 /* obtain a particular condition code. returns 0 or 1. */
 
-static einline unsigned get_cc (unsigned flag)
-{
-	return (reg_cc / flag) & 1;
-}
+#define GET_CC(flag) ((reg_cc / (flag)) & 1)
 
 /* set a particular condition code to either 0 or 1.
  * value parameter must be either 0 or 1.
@@ -128,9 +125,7 @@ static einline void set_cc (unsigned flag, unsigned value)
 static einline unsigned test_c (unsigned i0, unsigned i1,
 								unsigned r, unsigned sub)
 {
-	unsigned flag;
-
-	flag  = (i0 | i1) & ~r; /* one of the inputs is 1 and output is 0 */
+	unsigned flag  = (i0 | i1) & ~r; /* one of the inputs is 1 and output is 0 */
 	flag |= (i0 & i1);      /* both inputs are 1 */
 	flag  = (flag >> 7) & 1;
 	flag ^= sub; /* on a sub, carry is opposite the carry of an add */
@@ -140,10 +135,7 @@ static einline unsigned test_c (unsigned i0, unsigned i1,
 
 /* test negative */
 
-static einline unsigned test_n (unsigned r)
-{
-	return (r >> 7) & 1;
-}
+#define TEST_N(r) (((r) >> 7) & 1)
 
 /* test for zero in lower 8 bits */
 
@@ -539,7 +531,7 @@ static einline unsigned inst_neg (unsigned data)
 	unsigned r = i0 + i1 + 1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 	set_cc (FLAG_C, test_c (i0, i1, r, 1));
@@ -553,7 +545,7 @@ static einline unsigned inst_com (unsigned data)
 {
 	unsigned r = ~data;
 
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, 0);
 	set_cc (FLAG_C, 1);
@@ -582,10 +574,10 @@ static einline unsigned inst_lsr (unsigned data)
 
 static einline unsigned inst_ror (unsigned data)
 {
-	unsigned c = get_cc (FLAG_C);
+	unsigned c = GET_CC(FLAG_C);
 	unsigned r = ((data >> 1) & 0x7f) | (c << 7);
 
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_C, data & 1);
 
@@ -600,7 +592,7 @@ static einline unsigned inst_asr (unsigned data)
 {
 	unsigned r = ((data >> 1) & 0x7f) | (data & 0x80);
 
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_C, data & 1);
 
@@ -618,7 +610,7 @@ static einline unsigned inst_asl (unsigned data)
 	unsigned r = i0 + i1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 	set_cc (FLAG_C, test_c (i0, i1, r, 0));
@@ -634,10 +626,10 @@ static einline unsigned inst_rol (unsigned data)
 {
 	unsigned i0 = data;
 	unsigned i1 = data;
-	unsigned c = get_cc (FLAG_C);
+	unsigned c = GET_CC(FLAG_C);
 	unsigned r = i0 + i1 + c;
 
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 	set_cc (FLAG_C, test_c (i0, i1, r, 0));
@@ -655,7 +647,7 @@ static einline unsigned inst_dec (unsigned data)
 	unsigned i1 = 0xff;
 	unsigned r = i0 + i1;
 
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 
@@ -672,7 +664,7 @@ static einline unsigned inst_inc (unsigned data)
 	unsigned i1 = 1;
 	unsigned r = i0 + i1;
 
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 
@@ -683,14 +675,14 @@ static einline unsigned inst_inc (unsigned data)
 
 static einline void inst_tst8 (unsigned data)
 {
-	set_cc (FLAG_N, test_n (data));
+	set_cc (FLAG_N, TEST_N (data));
 	set_cc (FLAG_Z, test_z8 (data));
 	set_cc (FLAG_V, 0);
 }
 
 static einline void inst_tst16 (unsigned data)
 {
-	set_cc (FLAG_N, test_n (data >> 8));
+	set_cc (FLAG_N, TEST_N (data >> 8));
 	set_cc (FLAG_Z, test_z16 (data));
 	set_cc (FLAG_V, 0);
 }
@@ -714,7 +706,7 @@ static einline unsigned inst_sub8 (unsigned data0, unsigned data1)
 	unsigned r = i0 + i1 + 1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 	set_cc (FLAG_C, test_c (i0, i1, r, 1));
@@ -730,11 +722,11 @@ static einline unsigned inst_sbc (unsigned data0, unsigned data1)
 {
 	unsigned i0 = data0;
 	unsigned i1 = ~data1;
-	unsigned c = 1 - get_cc (FLAG_C);
+	unsigned c = 1 - GET_CC(FLAG_C);
 	unsigned r = i0 + i1 + c;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 	set_cc (FLAG_C, test_c (i0, i1, r, 1));
@@ -776,11 +768,11 @@ static einline unsigned inst_adc (unsigned data0, unsigned data1)
 {
 	unsigned i0 = data0;
 	unsigned i1 = data1;
-	unsigned c = get_cc (FLAG_C);
+	unsigned c = GET_CC(FLAG_C);
 	unsigned r = i0 + i1 + c;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 	set_cc (FLAG_C, test_c (i0, i1, r, 0));
@@ -810,7 +802,7 @@ static einline unsigned inst_add8 (unsigned data0, unsigned data1)
 	unsigned r = i0 + i1;
 
 	set_cc (FLAG_H, test_c (i0 << 4, i1 << 4, r << 4, 0));
-	set_cc (FLAG_N, test_n (r));
+	set_cc (FLAG_N, TEST_N (r));
 	set_cc (FLAG_Z, test_z8 (r));
 	set_cc (FLAG_V, test_v (i0, i1, r));
 	set_cc (FLAG_C, test_c (i0, i1, r, 0));
@@ -826,7 +818,7 @@ static einline unsigned inst_add16 (unsigned data0, unsigned data1)
 	unsigned i1 = data1;
 	unsigned r = i0 + i1;
 
-	set_cc (FLAG_N, test_n (r >> 8));
+	set_cc (FLAG_N, TEST_N (r >> 8));
 	set_cc (FLAG_Z, test_z16 (r));
 	set_cc (FLAG_V, test_v (i0 >> 8, i1 >> 8, r >> 8));
 	set_cc (FLAG_C, test_c (i0 >> 8, i1 >> 8, r >> 8, 0));
@@ -842,7 +834,7 @@ static einline unsigned inst_sub16 (unsigned data0, unsigned data1)
 	unsigned i1 = ~data1;
 	unsigned r = i0 + i1 + 1;
 
-	set_cc (FLAG_N, test_n (r >> 8));
+	set_cc (FLAG_N, TEST_N (r >> 8));
 	set_cc (FLAG_Z, test_z16 (r));
 	set_cc (FLAG_V, test_v (i0 >> 8, i1 >> 8, r >> 8));
 	set_cc (FLAG_C, test_c (i0 >> 8, i1 >> 8, r >> 8, 1));
@@ -1108,7 +1100,7 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 	unsigned ea, i0, i1, r;
 
 	if (irq_f) {
-		if (get_cc (FLAG_F) == 0) {
+		if (GET_CC(FLAG_F) == 0) {
 			if (irq_status != IRQ_CWAI) {
 				set_cc (FLAG_E, 0);
 				inst_psh (0x81, &reg_s, reg_u, &cycles);
@@ -1128,7 +1120,7 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 	}
 
 	if (irq_i) {
-		if (get_cc (FLAG_I) == 0) {
+		if (GET_CC(FLAG_I) == 0) {
 			if (irq_status != IRQ_CWAI) {
 				set_cc (FLAG_E, 1);
 				inst_psh (0xff, &reg_s, reg_u, &cycles);
@@ -2123,44 +2115,44 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 	case 0x22:
 	/* bls */
 	case 0x23:
-		inst_bra8 (get_cc (FLAG_C) | get_cc (FLAG_Z), op, &cycles);
+		inst_bra8 (GET_CC(FLAG_C) | GET_CC(FLAG_Z), op, &cycles);
 		break;
 	/* bhs/bcc */
 	case 0x24:
 	/* blo/bcs */
 	case 0x25:
-		inst_bra8 (get_cc (FLAG_C), op, &cycles);
+		inst_bra8 (GET_CC(FLAG_C), op, &cycles);
 		break;
 	/* bne */
 	case 0x26:
 	/* beq */
 	case 0x27:
-		inst_bra8 (get_cc (FLAG_Z), op, &cycles);
+		inst_bra8 (GET_CC(FLAG_Z), op, &cycles);
 		break;
 	/* bvc */
 	case 0x28:
 	/* bvs */
 	case 0x29:
-		inst_bra8 (get_cc (FLAG_V), op, &cycles);
+		inst_bra8 (GET_CC (FLAG_V), op, &cycles);
 		break;
 	/* bpl */
 	case 0x2a:
 	/* bmi */
 	case 0x2b:
-		inst_bra8 (get_cc (FLAG_N), op, &cycles);
+		inst_bra8 (GET_CC (FLAG_N), op, &cycles);
 		break;
 	/* bge */
 	case 0x2c:
 	/* blt */
 	case 0x2d:
-		inst_bra8 (get_cc (FLAG_N) ^ get_cc (FLAG_V), op, &cycles);
+		inst_bra8 (GET_CC (FLAG_N) ^ GET_CC (FLAG_V), op, &cycles);
 		break;
 	/* bgt */
 	case 0x2e:
 	/* ble */
 	case 0x2f:
-		inst_bra8 (get_cc (FLAG_Z) |
-				   (get_cc (FLAG_N) ^ get_cc (FLAG_V)), op, &cycles);
+		inst_bra8 (GET_CC (FLAG_Z) |
+				   (GET_CC (FLAG_N) ^ GET_CC (FLAG_V)), op, &cycles);
 		break;
 	/* lbra */
 	case 0x16:
@@ -2266,7 +2258,7 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 	/* sex */
 	case 0x1d:
 		set_reg_d (sign_extend (reg_b));
-		set_cc (FLAG_N, test_n (reg_a));
+		set_cc (FLAG_N, TEST_N (reg_a));
 		set_cc (FLAG_Z, test_z16 (get_reg_d ()));
 		cycles += 2;
 		break;
@@ -2282,7 +2274,7 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 		break;
 	/* rti */
 	case 0x3b:
-		if (get_cc (FLAG_E)) {
+		if (GET_CC (FLAG_E)) {
 			inst_pul (0xff, &reg_s, &reg_u, &cycles);
 		} else {
 			inst_pul (0x81, &reg_s, &reg_u, &cycles);
@@ -2309,7 +2301,7 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 		i0 = reg_a;
 		i1 = 0;
 
-		if ((reg_a & 0x0f) > 0x09 || get_cc (FLAG_H) == 1) {
+		if ((reg_a & 0x0f) > 0x09 || GET_CC (FLAG_H) == 1) {
 			i1 |= 0x06;
 		}
 
@@ -2317,13 +2309,13 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 			i1 |= 0x60;
 		}
 
-		if ((reg_a & 0xf0) > 0x90 || get_cc (FLAG_C) == 1) {
+		if ((reg_a & 0xf0) > 0x90 || GET_CC (FLAG_C) == 1) {
 			i1 |= 0x60;
 		}
 
 		reg_a = i0 + i1;
 
-		set_cc (FLAG_N, test_n (reg_a));
+		set_cc (FLAG_N, TEST_N (reg_a));
 		set_cc (FLAG_Z, test_z8 (reg_a));
 		set_cc (FLAG_V, 0);
 		set_cc (FLAG_C, test_c (i0, i1, reg_a, 0));
@@ -2354,44 +2346,44 @@ unsigned e6809_sstep (unsigned irq_i, unsigned irq_f)
 		case 0x22:
 		/* lbls */
 		case 0x23:
-			inst_bra16 (get_cc (FLAG_C) | get_cc (FLAG_Z), op, &cycles);
+			inst_bra16 (GET_CC (FLAG_C) | GET_CC (FLAG_Z), op, &cycles);
 			break;
 		/* lbhs/lbcc */
 		case 0x24:
 		/* lblo/lbcs */
 		case 0x25:
-			inst_bra16 (get_cc (FLAG_C), op, &cycles);
+			inst_bra16 (GET_CC (FLAG_C), op, &cycles);
 			break;
 		/* lbne */
 		case 0x26:
 		/* lbeq */
 		case 0x27:
-			inst_bra16 (get_cc (FLAG_Z), op, &cycles);
+			inst_bra16 (GET_CC (FLAG_Z), op, &cycles);
 			break;
 		/* lbvc */
 		case 0x28:
 		/* lbvs */
 		case 0x29:
-			inst_bra16 (get_cc (FLAG_V), op, &cycles);
+			inst_bra16 (GET_CC (FLAG_V), op, &cycles);
 			break;
 		/* lbpl */
 		case 0x2a:
 		/* lbmi */
 		case 0x2b:
-			inst_bra16 (get_cc (FLAG_N), op, &cycles);
+			inst_bra16 (GET_CC (FLAG_N), op, &cycles);
 			break;
 		/* lbge */
 		case 0x2c:
 		/* lblt */
 		case 0x2d:
-			inst_bra16 (get_cc (FLAG_N) ^ get_cc (FLAG_V), op, &cycles);
+			inst_bra16 (GET_CC (FLAG_N) ^ GET_CC (FLAG_V), op, &cycles);
 			break;
 		/* lbgt */
 		case 0x2e:
 		/* lble */
 		case 0x2f:
-			inst_bra16 (get_cc (FLAG_Z) |
-						(get_cc (FLAG_N) ^ get_cc (FLAG_V)), op, &cycles);
+			inst_bra16 (GET_CC (FLAG_Z) |
+               (GET_CC (FLAG_N) ^ GET_CC (FLAG_V)), op, &cycles);
 			break;
 		/* cmpd */
 		case 0x83:
