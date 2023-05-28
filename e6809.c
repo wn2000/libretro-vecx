@@ -11,7 +11,7 @@
  *    the lower bits with the unused upper bits all set to zero.
  */
 
-#define einline INLINE
+#define einline
 
 enum {
 	FLAG_E		= 0x80,
