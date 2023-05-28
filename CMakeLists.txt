@@ -14,10 +14,10 @@ add_definitions(
 add_link_options(-Wl,-no-undefined)
 
 add_library(${PROJECT_NAME} SHARED
+    vecx.cpp
+    libretro.cpp
     e6809.c
     e8910.c
-    libretro.c
-    vecx.c
     libretro-common/glsym/rglgen.c
     libretro-common/glsym/glsym_es2.c
     )
