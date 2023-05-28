@@ -11,7 +11,7 @@ add_definitions(
     -DHAS_GPU
     -DHAVE_OPENGLES -DHAVE_OPENGLES2
 )
-add_link_options(-Wl,-no-undefined)
+add_link_options(-Wl,-no-undefined -static-libgcc -static-libstdc++)
 
 add_library(${PROJECT_NAME} SHARED
     vecx.cpp
@@ -25,7 +25,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SO
 
 target_link_libraries(${PROJECT_NAME}
     GLESv2
-    m
 )
 
 # Removes the 'lib' prefix on Linux
