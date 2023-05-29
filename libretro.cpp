@@ -1,8 +1,6 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
+#include <cstdio>
+#include <cmath>
+#include <iostream>
 
 #include "osint.h"
 #include "vecx.h"
@@ -175,14 +173,15 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    memset(info, 0, sizeof(*info));
    info->timing.fps            = 50.0;
    info->timing.sample_rate    = 44100;
-   info->geometry.base_width   = 330;
-   info->geometry.base_height  = 410;
+   info->geometry.base_width   = WIDTH;
+   info->geometry.base_height  = HEIGHT;
 #if defined(_3DS) || defined(RETROFW)
    info->geometry.max_width    = 330;
    info->geometry.max_height   = 410;
 #else
-   info->geometry.max_width    = 2048;
-   info->geometry.max_height   = 2048;
+   int max_geometry = std::max(WIDTH, HEIGHT);
+   info->geometry.max_width = max_geometry;
+   info->geometry.max_height = max_geometry;
 #endif
 
    info->geometry.aspect_ratio = 33.0 / 41.0;
