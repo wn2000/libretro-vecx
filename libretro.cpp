@@ -920,9 +920,13 @@ void osint_render(void)
 
          /* Is this vector a point? */
          if (vectors_draw[i].x0 == vectors_draw[i].x1 && vectors_draw[i].y0 == vectors_draw[i].y1
-               /* That isn't joining two lines. */
-               && (vectors_draw[i].x0 != vectors_draw[i-1].x1 || vectors_draw[i].x1 != vectors_draw[i+1].x0 ||
-                  vectors_draw[i].y0 != vectors_draw[i-1].y1 || vectors_draw[i].y1 != vectors_draw[i+1].y0))
+             /* That isn't joining two lines. */
+             && (i == 0 ||
+                 vectors_draw[i].x0 != vectors_draw[i - 1].x1 ||
+                 vectors_draw[i].y0 != vectors_draw[i - 1].y1 ||
+                 i == vector_draw_cnt - 1 ||
+                 vectors_draw[i].x1 != vectors_draw[i + 1].x0 ||
+                 vectors_draw[i].y1 != vectors_draw[i + 1].y0))
 #if 0
             if (vectors_draw[i].p0 == vectors_draw[i].p1
                   && (vectors_draw[i].p0 != vectors_draw[i-1].p1 || vectors_draw[i].p1 != vectors_draw[i+1].p0))
