@@ -81,6 +81,7 @@ static GLuint packedTexCoordsAttribLocation;
 static GLuint textureLocation;
 static GLuint scaleLocation;
 static GLuint brightnessLocation;
+static GLuint pseudoColorLocation;
 static GLuint DotTextureID;
 static GLuint BloomTextureID;
 static GLuint vbo;
@@ -110,6 +111,7 @@ static float lineBrightness        = 216.0f;
 static float bloomWidthMultiplier  = 8.0f;
 static float maxAlpha              = 0.2f;
 static const float bloomBrightness = 200.0f;
+static GLfloat pseudoColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
 typedef struct
 {
@@ -192,6 +194,14 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 #define POINT_NEAR (-1.0f)
 #define POINT_FAR  (1.0f)
 
+static void set_color(uint8_t r, uint8_t g, uint8_t b)
+{
+   pseudoColor[0] = (float)r / 255.f;
+   pseudoColor[1] = (float)g / 255.f;
+   pseudoColor[2] = (float)b / 255.f;
+   pseudoColor[3] = 1.0f;
+}
+
 static void make_mvp_matrix(float mvp_mat[16],
       float left, float bottom, float right, float top)
 {
@@ -253,10 +263,11 @@ static void compile_gl_program(void)
          "}\n"
    };
    const char *fragmentShaderSource[] = {
-      "#ifdef GL_ES\n"
+         "#ifdef GL_ES\n"
          "precision mediump float;\n"
          "#endif\n"
          "uniform sampler2D texture;\n"
+         "uniform vec4 pseudoColor;\n"
 
          "varying float fragColour;\n"
          "varying vec2 fragTexCoords;\n"
@@ -264,6 +275,7 @@ static void compile_gl_program(void)
          "void main()\n"
          "{\n"
          "   vec4 colour = texture2D(texture, fragTexCoords).rgbr;\n"
+         "   colour *= pseudoColor;\n"
          "   colour *= fragColour;\n"
          "   gl_FragColor = colour;\n"
          "}\n"
@@ -287,6 +299,7 @@ static void compile_gl_program(void)
    textureLocation               = glGetUniformLocation(ProgramID, "texture");
    scaleLocation                 = glGetUniformLocation(ProgramID, "scale");
    brightnessLocation            = glGetUniformLocation(ProgramID, "brightness");
+   pseudoColorLocation           = glGetUniformLocation(ProgramID, "pseudoColor");
    positionAttribLocation        = glGetAttribLocation(ProgramID, "position");
    offsetAttribLocation          = glGetAttribLocation(ProgramID, "offset");
    colourAttribLocation          = glGetAttribLocation(ProgramID, "colour");
@@ -526,6 +539,40 @@ static void check_variables(void)
          if (value <= 0)
             value = 8;
          bloomWidthMultiplier = value;
+      }
+
+      var.value = NULL;
+      var.key = "vecx_line_color";
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         if (strcmp(var.value, "White") == 0)
+         {
+            set_color(0xff, 0xff, 0xff);
+         }
+         else if (strcmp(var.value, "Green") == 0)
+         {
+            set_color(0x44, 0xff, 0x44);
+         }
+         else if (strcmp(var.value, "Cyan") == 0)
+         {
+            set_color(0x44, 0xff, 0xff);
+         }
+         else if (strcmp(var.value, "Yellow") == 0)
+         {
+            set_color(0xff, 0xff, 0x44);
+         }
+         else if (strcmp(var.value, "Magenta") == 0)
+         {
+            set_color(0xff, 0x44, 0xff);
+         }
+         else if (strcmp(var.value, "Red") == 0)
+         {
+            set_color(0xff, 0x44, 0x44);
+         }
+         else if (strcmp(var.value, "Blue") == 0)
+         {
+            set_color(0x44, 0x44, 0xff);
+         }
       }
    }
    else
@@ -1111,6 +1158,7 @@ void osint_render(void)
          glUniform1i(textureLocation, 0);
          glUniform1f(scaleLocation, lineWidth * bloomWidthMultiplier);
          glUniform1f(brightnessLocation, bloomBrightness);
+         glUniform4fv(pseudoColorLocation, 1, pseudoColor);
          glBlendEquation(GL_FUNC_ADD);
          glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
          glDrawArrays(GL_TRIANGLES, 0, num_verts);
@@ -1123,6 +1171,7 @@ void osint_render(void)
       glUniform1i(textureLocation, 0);
       glUniform1f(scaleLocation, lineWidth);
       glUniform1f(brightnessLocation, lineBrightness);
+      glUniform4fv(pseudoColorLocation, 1, pseudoColor);
       glBlendFunc(GL_ONE, GL_ONE);
       glDrawArrays(GL_TRIANGLES, 0, num_verts);
 
