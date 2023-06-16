@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 #include "osint.h"
 #include "vecx.h"
@@ -52,6 +53,50 @@ static float SCALEY = 1.;
 #endif
 
 static struct retro_hw_render_callback hw_render;
+
+// #define GL_DEBUG
+#ifdef GL_DEBUG
+static void CheckOpenGLError(const char* stmt, const char* fname, int line)
+{
+	do {
+		GLenum err = glGetError();
+		if (err == GL_NO_ERROR) break;
+
+		log_cb(RETRO_LOG_ERROR, "OpenGL error %08x, at %s:%i - for %s\n", err, fname, line, stmt);
+	} while (true);
+}
+
+GLint CheckShaderCompileError(GLuint shader)
+{
+   GLint isCompiled = 0;
+   glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+   if (!isCompiled)
+   {
+      GLint maxLength = 0;
+      glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+      // The maxLength includes the NULL character
+      std::vector<GLchar> errorLog(maxLength);
+      glGetShaderInfoLog(shader, maxLength, &maxLength, &errorLog[0]);
+
+      // Provide the infolog in whatever manor you deem best.
+      log_cb(RETRO_LOG_ERROR, "Error compiling shader: %s\n", errorLog.data());
+
+      // Exit with failure.
+      glDeleteShader(shader); // Don't leak the shader.
+      return 0;
+   }
+
+   return 1;
+}
+
+#define GL_CHECK(stmt) do { \
+            stmt; \
+            CheckOpenGLError(#stmt, __FILE__, __LINE__); \
+        } while (0)
+#else
+#define GL_CHECK(stmt) stmt
+#endif
 #endif
 
 #if defined(_3DS) || defined(RETROFW)
@@ -85,7 +130,7 @@ static GLuint pseudoColorLocation;
 static GLuint DotTextureID;
 static GLuint BloomTextureID;
 static GLuint vbo;
-GLfloat mvp_matrix[16];
+GLfloat mvp_matrix[4];
 
 typedef struct
 {
@@ -96,7 +141,7 @@ typedef struct
       struct
       {
          uint16_t offsets;
-         GLbyte colour;
+         GLubyte colour;
          GLubyte packedTexCoords;
       };
    };
@@ -191,9 +236,6 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 
 #ifdef HAS_GPU
-#define POINT_NEAR (-1.0f)
-#define POINT_FAR  (1.0f)
-
 static void set_color(uint8_t r, uint8_t g, uint8_t b)
 {
    pseudoColor[0] = (float)r / 255.f;
@@ -202,50 +244,34 @@ static void set_color(uint8_t r, uint8_t g, uint8_t b)
    pseudoColor[3] = 1.0f;
 }
 
-static void make_mvp_matrix(float mvp_mat[16],
-      float left, float bottom, float right, float top)
+// Populates relevant MVP matrix elements in this order: M_00, M_11, M_03, M_13.
+static void make_mvp_matrix(float mvp_mat[4],
+                            float left, float bottom, float right, float top)
 {
-   int i;
-
-   for (i=0; i<16; i++)
-      mvp_mat[i] = 0;
-
-   mvp_mat[0]    = 2.0f/(right-left);
-   mvp_mat[3]    = -(right+left)/(right-left);
-   mvp_mat[5]    = 2.0f/(top-bottom);
-   mvp_mat[7]    = -(top+bottom)/(top-bottom);
-   mvp_mat[10]   = -2.0f/(POINT_FAR - POINT_NEAR);
-   mvp_mat[11]   = -(POINT_FAR + POINT_NEAR)/(POINT_FAR - POINT_NEAR);
-   mvp_mat[15]   = 1.0f;
+   mvp_mat[0] = 2.0f / (right - left);
+   mvp_mat[1] = 2.0f / (top - bottom);
+   mvp_mat[2] = -(right + left) / (right - left);
+   mvp_mat[3] = -(top + bottom) / (top - bottom);
 }
 
 static void create_gl_image(
       uint32_t width, uint32_t height, const uint8_t *data, GLuint *textureId)
 {
-   GLenum err;
-   glGenTextures(1, textureId);
-   if ((err = glGetError()))
-      log_cb(RETRO_LOG_ERROR, "Error generating GL texture: %x\n", err);
-   glBindTexture(GL_TEXTURE_2D, *textureId);
-   if ((err = glGetError()))
-      log_cb(RETRO_LOG_ERROR, "Error binding GL texture: %x\n", err);
-
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width, height, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data);
-   if ((err = glGetError()))
-      log_cb(RETRO_LOG_ERROR, "Error loading GL texture: %x\n", err);
+   GL_CHECK(glGenTextures(1, textureId));
+   GL_CHECK(glBindTexture(GL_TEXTURE_2D, *textureId));
+   GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+   GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+   GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width, height, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, data));
 }
 
 static void compile_gl_program(void)
 {
    const GLchar *vertexShaderSource[] = {
-      "attribute vec2 position;\n"
+         "attribute vec2 position;\n"
          "attribute vec2 offset;\n"
          "attribute float colour;\n"
          "attribute float packedTexCoords;\n"
-         "uniform mat4  mvpMatrix;\n"
+         "uniform vec4 mvpMatrix;\n"
          "uniform float scale;\n"
          "uniform float brightness;\n"
 
@@ -259,7 +285,7 @@ static void compile_gl_program(void)
          "   float tx = floor(packedTexCoords * 0.0625);\n" /* RPI gets upset if we divide by 16 so multiply by 1/16 instead. */
          "   float ty = packedTexCoords - tx * 16.0;\n"
          "   fragTexCoords = vec2(tx, ty) / 2.0;\n"
-         "   gl_Position = vec4(pos, 0.0, 1.0) * mvpMatrix;\n"
+         "   gl_Position = vec4(pos * mvpMatrix.xy + mvpMatrix.zw, 0.0, 1.0);\n"
          "}\n"
    };
    const char *fragmentShaderSource[] = {
@@ -285,16 +311,17 @@ static void compile_gl_program(void)
    GLuint vert = glCreateShader(GL_VERTEX_SHADER);
    GLuint frag = glCreateShader(GL_FRAGMENT_SHADER);
 
-   glShaderSource(vert, ARRAY_SIZE(vertexShaderSource), vertexShaderSource, 0);
-   glShaderSource(frag, ARRAY_SIZE(fragmentShaderSource), fragmentShaderSource, 0);
-   glCompileShader(vert);
-   glCompileShader(frag);
+   GL_CHECK(glShaderSource(vert, ARRAY_SIZE(vertexShaderSource), vertexShaderSource, 0));
+   GL_CHECK(glShaderSource(frag, ARRAY_SIZE(fragmentShaderSource), fragmentShaderSource, 0));
+   GL_CHECK(glCompileShader(vert));
+   GL_CHECK(glCompileShader(frag));
 
-   glAttachShader(ProgramID, vert);
-   glAttachShader(ProgramID, frag);
-   glLinkProgram(ProgramID);
-   glDeleteShader(vert);
-   glDeleteShader(frag);
+   GL_CHECK(glAttachShader(ProgramID, vert));
+   GL_CHECK(glAttachShader(ProgramID, frag));
+   GL_CHECK(glLinkProgram(ProgramID));
+   GL_CHECK(glDeleteShader(vert));
+   GL_CHECK(glDeleteShader(frag));
+
    mvpMatrixLocation             = glGetUniformLocation(ProgramID, "mvpMatrix");
    textureLocation               = glGetUniformLocation(ProgramID, "texture");
    scaleLocation                 = glGetUniformLocation(ProgramID, "scale");
@@ -853,9 +880,9 @@ static INLINE void draw_line(
 }
 
 #ifdef HAS_GPU
-static inline uint32_t make_all(float dx, float dy, int8_t col, uint8_t tc)
+static inline uint32_t make_all(float dx, float dy, uint8_t col, uint8_t tc)
 {
-   return (((int8_t)(dx*64.0f+0.5f)) & 0xff) | (((int8_t)(dy*64.0f+0.5f) & 0xff) << 8) | ((col << 16)&0xff0000) | (tc << 24);
+   return ((int32_t)(dx * 64.0f + 0.5f) & 0xff) | ((int32_t)(dy * 64.0f + 0.5f) & 0xff) << 8 | (uint32_t)col << 16 | (uint32_t)tc << 24;
 }
 
 static inline float dot2d(VECX_POINT a, VECX_POINT b)
@@ -920,50 +947,33 @@ void osint_render(void)
 #ifdef HAS_GPU    
    else
    {
-      int i;
       GLint num_verts = 0;
       int continuing = 0;
 
-      int colour = 0;
+      uint8_t colour = 0;
 
       float dx = 0.0f;
       float dy = 0.0f;
-      GLint scissorTestEnabled = glIsEnabled(GL_SCISSOR_TEST);
-      GLint scissorBox[4];
 
-      glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
       glBindFramebuffer(RARCH_GL_FRAMEBUFFER, hw_render.get_current_framebuffer());
-
-      /* The texture backing the framebuffer is square and 
-       * a power-of-two, we only draw in the bottom left of it.
-       *
-       * We use the scissor box so the glClearColor() only 
-       * updates the part of the texture that we use rather than 
-       * all the texture.
-       *
-       * This saves memory bandwidth, which is very important on 
-       * low memory bandwidth and/or tile based GPUs.
-       */
-      glScissor(0, 0, WIDTH, HEIGHT);
-      glEnable(GL_SCISSOR_TEST);
       glViewport(0, 0, WIDTH, HEIGHT);
       glClearColor(0.0f, 0.0f, 0.0f, 1.0f-maxAlpha);
-
       glClear(GL_COLOR_BUFFER_BIT);
       glEnable(GL_BLEND);
 
       glUseProgram(ProgramID);
-      glUniformMatrix4fv(mvpMatrixLocation, 1, GL_FALSE, mvp_matrix);
+      // glUniformMatrix4fv(mvpMatrixLocation, 1, GL_FALSE, mvp_matrix);
+      glUniform4fv(mvpMatrixLocation, 1, mvp_matrix);
       glVertexAttribPointer(positionAttribLocation, 2, GL_UNSIGNED_SHORT, GL_FALSE, sizeof(GLVERTEX), &(vertices[0].pos));
       glEnableVertexAttribArray(positionAttribLocation);
       glVertexAttribPointer(offsetAttribLocation, 2, GL_BYTE, GL_FALSE, sizeof(GLVERTEX), &(vertices[0].offsets));
       glEnableVertexAttribArray(offsetAttribLocation);
-      glVertexAttribPointer(colourAttribLocation, 1, GL_BYTE, GL_FALSE, sizeof(GLVERTEX), &(vertices[0].colour));
+      glVertexAttribPointer(colourAttribLocation, 1, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(GLVERTEX), &(vertices[0].colour));
       glEnableVertexAttribArray(colourAttribLocation);
       glVertexAttribPointer(packedTexCoordsAttribLocation, 1, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(GLVERTEX), &(vertices[0].packedTexCoords));
       glEnableVertexAttribArray(packedTexCoordsAttribLocation);
 
-      for (i = 0; i < vector_draw_cnt; i++)
+      for (int i = 0; i < vector_draw_cnt; i++)
       {
          colour = vectors_draw[i].color;
          if (colour == 0 || colour > 127)
@@ -1181,15 +1191,7 @@ void osint_render(void)
       glDisableVertexAttribArray(packedTexCoordsAttribLocation);
 
       glUseProgram(0);
-
-      /* Restore the old scissor box state. */
-      if (scissorTestEnabled == GL_FALSE)
-         glDisable(GL_SCISSOR_TEST);
-      glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
       glDisable(GL_BLEND);
-
-      /* Start rendering ASAP by hinting to GL start get rendering now. */
-      glFlush();
    }
 #endif    
 }
